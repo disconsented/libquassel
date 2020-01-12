@@ -1,4 +1,17 @@
+#[allow(dead_code)]
 pub mod basic;
+pub mod variant;
+pub mod handshake;
+
+pub use basic::*;
+
+pub trait Serialize {
+    fn serialize(&self) -> Vec<u8>;
+}
+
+pub trait Deserialize {
+    fn parse(&mut self, b: &[u8]) -> usize;
+}
 
 
 //       78 da 6c 54 6d 6b d3 50 14 7e 44 41 d1 09

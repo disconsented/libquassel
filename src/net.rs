@@ -6,25 +6,26 @@ use std::net::TcpStream;
 use std::vec::Vec;
 
 extern crate log;
-use log::{info, warn, debug};
+// use log::{info, warn, debug};
 
 use super::types;
+use super::types::Serialize;
 
-pub struct Server {
-    TcpStream: TcpStream,
+pub struct Client {
+    tcp_stream: TcpStream,
     pub address: &'static str,
     pub port: u32,
     pub tls: bool,
     pub compression: bool,
 }
 
-// impl Server {
-//     pub fn login(&self, user: &'static str, pass: &'static str) {
-//         println!("{:?}", basic::Void);
-//     }
-// }
+impl Client {
+    pub fn login(&mut self, user: &'static str, pass: &'static str, client: types::handshake::ClientInit) {
+        self.tcp_stream.write(&client.serialize()).unwrap();
+    }
+}
 
-pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -> Result<Server, Error> {
+pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -> Result<Client, Error> {
     //let mut s = BufWriter::new(TcpStream::connect(format!("{}:{}", address, port)).unwrap());
     let mut s = TcpStream::connect(format!("{}:{}", address, port)).unwrap();
 
@@ -46,10 +47,10 @@ pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -
 
     let mut buf = [0; 4];
     s.read_exact(&mut buf)?;
-    println!("Received: {:?}", types::basic::VOID);
+    println!("Received: {:?}", buf);
 
-    let mut server: Server = Server {
-        TcpStream: s,
+    let server: Client = Client {
+        tcp_stream: s,
         address: address,
         port: port,
         tls: tls,
