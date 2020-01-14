@@ -8,8 +8,8 @@ use std::vec::Vec;
 extern crate log;
 // use log::{info, warn, debug};
 
-use super::types;
-use super::types::Serialize;
+
+use crate::protocol::message;
 
 pub struct Client {
     tcp_stream: TcpStream,
@@ -20,12 +20,30 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn login(&mut self, user: &'static str, pass: &'static str, client: types::handshake::ClientInit) {
-        self.tcp_stream.write(&client.serialize()).unwrap();
+    pub fn login(&mut self, user: &'static str, pass: &'static str, client: message::ClientInit) {
+        use crate::protocol::message::handshake::{HandshakeDeserialize, HandshakeSerialize, HandshakeQRead, VariantMap};
+        use crate::protocol::message::handshake::{ClientInit, ClientInitAck};
+        use std::convert::TryInto;
+
+        let sclientinit = &client.serialize();
+        let len: u32 = sclientinit.len().try_into().unwrap();
+//        self.tcp_stream.write(&len.to_be_bytes()).unwrap();
+        self.tcp_stream.write(sclientinit).unwrap();
+
+        let mut buf: Vec<u8> = [0; 2048].to_vec();
+        VariantMap::read(&mut self.tcp_stream, &mut buf);
+
+        // println!("{:?}", buf);
+        let res = ClientInitAck::parse(&buf);
+        println!("{:?}", res)
     }
 }
 
 pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -> Result<Client, Error> {
+    use crate::protocol::primitive::serialize::Serialize;
+    use crate::protocol::primitive::deserialize::Deserialize;
+    use crate::protocol::primitive::qread::QRead;
+
     //let mut s = BufWriter::new(TcpStream::connect(format!("{}:{}", address, port)).unwrap());
     let mut s = TcpStream::connect(format!("{}:{}", address, port)).unwrap();
 
@@ -45,9 +63,27 @@ pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -
     init.extend(proto.to_be_bytes().iter());
     s.write(&init)?;
 
+    #[derive(Debug)]
+    struct ConnAck {
+        flags: u8,
+        extra: i16,
+        version: i8
+    }
+
+    impl Deserialize for ConnAck {
+        fn parse(b: &[u8]) -> (usize, Self) {
+            let (flen, flags) = u8::parse(b);
+            let (elen, extra) = i16::parse(&b[flen..]);
+            let (vlen, version) = i8::parse(&b[(flen+elen)..]);
+
+            return (flen+elen+vlen, Self {flags, extra, version});
+        }
+    }
+
     let mut buf = [0; 4];
     s.read_exact(&mut buf)?;
-    println!("Received: {:?}", buf);
+    let (_, val) = ConnAck::parse(&buf);
+    println!("Received: {:?}", val);
 
     let server: Client = Client {
         tcp_stream: s,

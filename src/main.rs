@@ -1,11 +1,17 @@
 mod consts;
 mod net;
-mod types;
+
+mod protocol;
 
 #[macro_use]
 mod util;
 
+#[cfg(test)]
+mod tests;
+
 //use util::Hex;
+use protocol::primitive::{String, StringList};
+use protocol::message::{ClientInit};
 
 fn main() -> std::io::Result<()> {
     let mut server = net::connect(
@@ -15,11 +21,13 @@ fn main() -> std::io::Result<()> {
         false,
     )?;
 
-    let client = types::handshake::ClientInit {
-        client_version: String::from("Rust 0.0.0"),
-        build_date: String::from("today"),
-        client_features: 0x00000000,
-        feature_list: types::StringList::new()
+    let mut features = StringList::new();
+    features.push("SynchronizedMarkerLine".to_string());
+    let client = ClientInit {
+        client_version:String::from("Rust 0.0.0"),
+        client_date: String::from("1579009211"),
+        feature_list: features,
+        client_features: 0,
     };
     server.login("audron", "audron", client);
 
