@@ -81,7 +81,7 @@ impl HandshakeQRead for VariantMap {
         let mut pos = 8;
         let len: usize = len as usize;
         loop {
-            if pos >= (len - 4) { break; }
+            if pos >= len { break; }
             pos += Variant::read(s, &mut b[pos..])?;
             pos += Variant::read(s, &mut b[pos..])?;
         }

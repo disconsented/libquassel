@@ -99,7 +99,7 @@ pub struct ClientInitAck {
 
 impl HandshakeSerialize for ClientInitAck {
     fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
-        let mut values: VariantMap = VariantMap::with_capacity(2);
+        let mut values: VariantMap = VariantMap::with_capacity(6);
         values.insert("MsgType".to_string(), Variant::String("ClientInitAck".to_string()));
         values.insert("CoreFeatures".to_string(), Variant::u32(self.core_features));
         values.insert("Configured".to_string(), Variant::bool(self.core_configured));
@@ -129,6 +129,152 @@ impl HandshakeDeserialize for ClientInitAck {
                 storage_backends: match_variant!(values, Variant::VariantList, "StorageBackends"),
                 authenticators: match_variant!(values, Variant::VariantList, "Authenticators"),
                 feature_list: match_variant!(values, Variant::StringList, "FeatureList")
+            }));
+        } else {
+            return Err(ErrorKind::WrongMsgType);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ClientLogin {
+    pub user: String,
+    pub password: String
+}
+
+impl HandshakeSerialize for ClientLogin {
+    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+        let mut values: VariantMap = VariantMap::new();
+        values.insert("MsgType".to_string(), Variant::String("ClientLogin".to_string()));
+        values.insert("User".to_string(), Variant::String(self.user.clone()));
+        values.insert("Password".to_string(), Variant::String(self.password.clone()));
+        return HandshakeSerialize::serialize(&values);
+    }
+}
+
+impl HandshakeDeserialize for ClientLogin {
+    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
+
+        let msgtypev = &values["MsgType"];
+        let msgtype;
+        match msgtypev {
+            Variant::String(x) => msgtype = x,
+            Variant::StringUTF8(x) => msgtype = x,
+            _ => return Err(ErrorKind::WrongVariant)
+        };
+
+        if msgtype == "ClientLogin" {
+            return Ok((len, Self {
+                user: match_variant!(values, Variant::String, "User"),
+                password: match_variant!(values, Variant::String, "Password")
+            }));
+        } else {
+            return Err(ErrorKind::WrongMsgType);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ClientLoginAck;
+
+impl HandshakeSerialize for ClientLoginAck {
+    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+        let mut values: VariantMap = VariantMap::with_capacity(1);
+        values.insert("MsgType".to_string(), Variant::String("ClientLoginAck".to_string()));
+        return HandshakeSerialize::serialize(&values);
+    }
+}
+
+impl HandshakeDeserialize for ClientLoginAck {
+    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
+
+        let msgtypev = &values["MsgType"];
+        let msgtype;
+        match msgtypev {
+            Variant::String(x) => msgtype = x,
+            Variant::StringUTF8(x) => msgtype = x,
+            _ => return Err(ErrorKind::WrongVariant)
+        };
+
+        if msgtype == "ClientLogin" {
+            return Ok((len, Self {}));
+        } else {
+            return Err(ErrorKind::WrongMsgType);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ClientLoginReject {
+    error: String
+}
+
+impl HandshakeSerialize for ClientLoginReject {
+    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+        let mut values: VariantMap = VariantMap::with_capacity(1);
+        values.insert("MsgType".to_string(), Variant::String("ClientLoginReject".to_string()));
+        values.insert("ErrorString".to_string(), Variant::String(self.error.clone()));
+        return HandshakeSerialize::serialize(&values);
+    }
+}
+
+impl HandshakeDeserialize for ClientLoginReject {
+    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
+
+        let msgtypev = &values["MsgType"];
+        let msgtype;
+        match msgtypev {
+            Variant::String(x) => msgtype = x,
+            Variant::StringUTF8(x) => msgtype = x,
+            _ => return Err(ErrorKind::WrongVariant)
+        };
+
+        if msgtype == "ClientLogin" {
+            return Ok((len, Self { error: match_variant!(values, Variant::String, "ErrorString")}));
+        } else {
+            return Err(ErrorKind::WrongMsgType);
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SessionInit {
+    identities: VariantList,
+    buffers: VariantList,
+    network_ids: VariantList,
+}
+
+impl HandshakeSerialize for SessionInit {
+    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+        let mut values: VariantMap = VariantMap::with_capacity(1);
+        values.insert("MsgType".to_string(), Variant::String("SessionInit".to_string()));
+        values.insert("Identities".to_string(), Variant::VariantList(self.identities.clone()));
+        values.insert("BufferInfos".to_string(), Variant::VariantList(self.buffers.clone()));
+        values.insert("NetworkIds".to_string(), Variant::VariantList(self.network_ids.clone()));
+        return HandshakeSerialize::serialize(&values);
+    }
+}
+
+impl HandshakeDeserialize for SessionInit {
+    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
+
+        let msgtypev = &values["MsgType"];
+        let msgtype;
+        match msgtypev {
+            Variant::String(x) => msgtype = x,
+            Variant::StringUTF8(x) => msgtype = x,
+            _ => return Err(ErrorKind::WrongVariant)
+        };
+
+        if msgtype == "ClientLogin" {
+            return Ok((len, Self {
+                identities: match_variant!(values, Variant::VariantList, "Identities"),
+                buffers: match_variant!(values, Variant::VariantList, "BufferInfos"),
+                network_ids: match_variant!(values, Variant::VariantList, "NetworkIds")
             }));
         } else {
             return Err(ErrorKind::WrongMsgType);

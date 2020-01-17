@@ -23,23 +23,35 @@ pub struct Client {
 impl Client {
     pub fn login(&mut self, user: &'static str, pass: &'static str, client: message::ClientInit) {
         use crate::protocol::message::handshake::{HandshakeDeserialize, HandshakeSerialize, HandshakeQRead, VariantMap};
-        use crate::protocol::message::handshake::{ClientInit, ClientInitAck};
+        use crate::protocol::message::handshake::{ClientInitAck, ClientLogin, ClientLoginAck, SessionInit};
 
         self.tcp_stream.write(&client.serialize().unwrap()).unwrap();
 
         let mut buf: Vec<u8> = [0; 2048].to_vec();
         let len = VariantMap::read(&mut self.tcp_stream, &mut buf).unwrap();
         buf.truncate(len);
+        let res = ClientInitAck::parse(&buf).unwrap();
+        println!("res: {:?}", res);
 
-        let res = ClientInitAck::parse(&buf);
-        println!("{:?}", res)
+        let login = ClientLogin {user: user.to_string(), password: pass.to_string()};
+        self.tcp_stream.write(&login.serialize().unwrap()).unwrap();
+
+        let mut buf: Vec<u8> = [0; 2048].to_vec();
+        let len = VariantMap::read(&mut self.tcp_stream, &mut buf).unwrap();
+        buf.truncate(len);
+        let _res = ClientLoginAck::parse(&buf).unwrap();
+
+        let mut buf: Vec<u8> = [0; 2048].to_vec();
+        let len = VariantMap::read(&mut self.tcp_stream, &mut buf).unwrap();
+        buf.truncate(len);
+        let res = SessionInit::parse(&buf).unwrap();
+
+        println!("res: {:?}", res);
     }
 }
 
 pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -> Result<Client, Error> {
-    use crate::protocol::primitive::serialize::Serialize;
     use crate::protocol::primitive::deserialize::Deserialize;
-    use crate::protocol::primitive::qread::QRead;
 
     //let mut s = BufWriter::new(TcpStream::connect(format!("{}:{}", address, port)).unwrap());
     let mut s = TcpStream::connect(format!("{}:{}", address, port)).unwrap();
