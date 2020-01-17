@@ -9,7 +9,7 @@ pub fn serialize_variantmap() {
          0, 0, 0, 20, 0, 67, 0, 111, 0, 110, 0, 102, 0, 105, 0, 103, 0, 117, 0, 114, 0, 101, 0, 100,
          0, 0, 0, 1, 0, 1].to_vec();
     assert_eq!(
-        test_variantmap.serialize(),
+        test_variantmap.serialize().unwrap(),
         bytes
     );
 }
@@ -23,7 +23,7 @@ pub fn read_variantmap() {
         0, 0, 0, 1, 0, 1, 0, 0, 0, 1];
 
     let mut buf: Vec<u8> = [0; 43].to_vec();
-    let len = VariantMap::read(&mut Cursor::new(&test_bytes), &mut buf);
+    let len = VariantMap::read(&mut Cursor::new(&test_bytes), &mut buf).unwrap();
 
     assert_eq!(len, 43);
 
@@ -41,7 +41,7 @@ pub fn deserialize_variantmap() {
     let mut test_variantmap = VariantMap::new();
     test_variantmap.insert("Configured".to_string(), Variant::bool(true));
 
-    let (len, res) = VariantMap::parse(test_bytes);
+    let (len, res) = VariantMap::parse(test_bytes).unwrap();
 
     assert_eq!(len, 43);
     assert_eq!(res, test_variantmap);
@@ -55,7 +55,7 @@ pub fn deserialize_variantmap_utf8() {
     let mut test_variantmap = VariantMap::new();
     test_variantmap.insert("Configured".to_string(), Variant::bool(true));
 
-    let (len, res) = VariantMap::parse(test_bytes);
+    let (len, res) = VariantMap::parse(test_bytes).unwrap();
 
     assert_eq!(len, 33);
     assert_eq!(res, test_variantmap);

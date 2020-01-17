@@ -10,6 +10,7 @@ extern crate log;
 
 
 use crate::protocol::message;
+use crate::protocol::error::ErrorKind;
 
 pub struct Client {
     tcp_stream: TcpStream,
@@ -24,10 +25,10 @@ impl Client {
         use crate::protocol::message::handshake::{HandshakeDeserialize, HandshakeSerialize, HandshakeQRead, VariantMap};
         use crate::protocol::message::handshake::{ClientInit, ClientInitAck};
 
-        self.tcp_stream.write(&client.serialize()).unwrap();
+        self.tcp_stream.write(&client.serialize().unwrap()).unwrap();
 
         let mut buf: Vec<u8> = [0; 2048].to_vec();
-        let len = VariantMap::read(&mut self.tcp_stream, &mut buf);
+        let len = VariantMap::read(&mut self.tcp_stream, &mut buf).unwrap();
         buf.truncate(len);
 
         let res = ClientInitAck::parse(&buf);
@@ -67,18 +68,18 @@ pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -
     }
 
     impl Deserialize for ConnAck {
-        fn parse(b: &[u8]) -> (usize, Self) {
-            let (flen, flags) = u8::parse(b);
-            let (elen, extra) = i16::parse(&b[flen..]);
-            let (vlen, version) = i8::parse(&b[(flen+elen)..]);
+        fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+            let (flen, flags) = u8::parse(b)?;
+            let (elen, extra) = i16::parse(&b[flen..])?;
+            let (vlen, version) = i8::parse(&b[(flen+elen)..])?;
 
-            return (flen+elen+vlen, Self {flags, extra, version});
+            return Ok((flen+elen+vlen, Self {flags, extra, version}));
         }
     }
 
     let mut buf = [0; 4];
     s.read_exact(&mut buf)?;
-    let (_, val) = ConnAck::parse(&buf);
+    let (_, val) = ConnAck::parse(&buf).unwrap();
     println!("Received: {:?}", val);
 
     let server: Client = Client {
