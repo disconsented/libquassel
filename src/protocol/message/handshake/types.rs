@@ -1,6 +1,5 @@
 use std::io::Read;
 use std::vec::Vec;
-use std::net::TcpStream;
 use std::convert::TryInto;
 use std::collections::HashMap;
 
@@ -19,9 +18,8 @@ pub trait HandshakeDeserialize {
 }
 
 pub trait HandshakeQRead {
-    fn read(stream: &mut std::net::TcpStream, buf: &mut [u8]) -> usize;
+    fn read<T: Read>(stream: &mut T, buf: &mut [u8]) -> usize;
 }
-
 
 pub type VariantMap = HashMap<String, Variant>;
 
@@ -38,8 +36,7 @@ impl HandshakeSerialize for VariantMap {
         util::insert_bytes(0, &mut res, &mut [0, 0, 0, 10]);
 
         let len: i32 = res.len().try_into().unwrap();
-        util::insert_bytes(0, &mut res, &mut ((len + 4).to_be_bytes()));
-        println!("len: {:?}", len + 4);
+        util::insert_bytes(0, &mut res, &mut ((len).to_be_bytes()));
 
         return res;
     }
@@ -54,15 +51,17 @@ impl HandshakeDeserialize for VariantMap {
         let ulen: usize = len as usize;
         loop {
             if (pos) >= ulen { break; }
-            let (nlen, name) = Variant::parse(&b[(pos)..]);
+            let (nlen, name) = Variant::parse(&b[pos..]);
             pos += nlen;
 
-            let (vlen, value) = Variant::parse(&b[(pos)..]);
+            let (vlen, value) = Variant::parse(&b[pos..]);
             pos += vlen;
 
-            if let Variant::StringUTF8(x) = name {
-                map.insert(x, value);
-            }
+            match name {
+                Variant::String(x) => map.insert(x, value),
+                Variant::StringUTF8(x) => map.insert(x, value),
+                _ => panic!()
+            };
         }
 
         return (pos, map);
@@ -70,21 +69,19 @@ impl HandshakeDeserialize for VariantMap {
 }
 
 impl HandshakeQRead for VariantMap {
-    fn read(mut s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..4]).unwrap();
         let (_, len) = i32::parse(&b[0..4]);
-        println!("len: {:?}", len);
 
         // Read the 00 00 00 0a VariantType bytes and discard
-        let mut tbuf = [0; 4];
-        s.read(&mut tbuf).unwrap();
+        s.read(&mut b[4..8]).unwrap();
 
-        let mut pos = 4;
+        let mut pos = 8;
         let len: usize = len as usize;
         loop {
             if pos >= (len - 4) { break; }
-            pos += Variant::read(&mut s, &mut b[pos..]);
-            pos += Variant::read(&mut s, &mut b[(pos+4..)]);
+            pos += Variant::read(s, &mut b[pos..]);
+            pos += Variant::read(s, &mut b[pos..]);
         }
 
         return pos;

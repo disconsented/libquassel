@@ -25,6 +25,6 @@ pub mod deserialize {
 
 pub mod qread {
     pub trait QRead {
-        fn read(stream: &mut std::net::TcpStream, buf: &mut [u8]) -> usize;
+        fn read<T: std::io::Read>(stream: &mut T, buf: &mut [u8]) -> usize;
     }
 }

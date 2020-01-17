@@ -3,8 +3,6 @@ use std::convert::TryInto;
 use std::collections::HashMap;
 
 use std::io::Read;
-use std::net::TcpStream;
-
 use crate::util;
 use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
 use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
@@ -33,19 +31,15 @@ impl Serialize for VariantMap {
 impl Deserialize for VariantMap {
     fn parse(b: &[u8]) -> (usize, Self) {
         let (_, len) = i32::parse(&b[0..4]);
-        println!("len: {:?}", len);
 
         let mut pos = 4;
         let mut map = VariantMap::new();
         for _ in 0..len {
-            println!("pos: {:?}", pos);
             let (nlen, name) = String::parse(&b[(pos)..]);
             pos += nlen;
-            println!("pos: {:?}", pos);
 
             let (vlen, value) = Variant::parse(&b[(pos)..]);
             pos += vlen;
-            println!("pos: {:?}", pos);
 
             map.insert(name, value);
         }
@@ -55,7 +49,7 @@ impl Deserialize for VariantMap {
 }
 
 impl QRead for VariantMap {
-    fn read(mut s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..4]).unwrap();
 
 
@@ -63,8 +57,8 @@ impl QRead for VariantMap {
 
         let mut pos = 4;
         for _ in 0..len {
-            pos += String::read(&mut s, &mut b[pos..]);
-            pos += Variant::read(&mut s, &mut b[(pos+3..)]);
+            pos += String::read(s, &mut b[pos..]);
+            pos += Variant::read(s, &mut b[(pos+3..)]);
         }
 
         return pos;
@@ -105,14 +99,14 @@ impl Deserialize for VariantList {
 }
 
 impl QRead for VariantList {
-    fn read(mut s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..4]).unwrap();
 
         let (_, len) = i32::parse(&b[0..4]);
 
         let mut pos = 4;
         for _ in 0..len {
-            pos += Variant::read(&mut s, &mut b[(pos+3..)]);
+            pos += Variant::read(s, &mut b[(pos+3..)]);
         }
 
         return pos;
@@ -300,32 +294,30 @@ impl Deserialize for Variant {
 }
 
 impl QRead for Variant {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
 
         s.read(&mut b[0..4]).unwrap();
         let (_, qtype) = i32::parse(&b[0..4]);
         let qtype = qtype as u32;
 
         s.read(&mut [b[4]]).unwrap();
-        #[allow(unused_variables)]
-        let unknown: u8 = b[4];
 
         let mut len = 5;
         match qtype {
-            primitive::QVARIANTMAP  => len += VariantMap::read(s, &mut b[5..]),
-            primitive::QVARIANTLIST => len += VariantList::read(s, &mut b[5..]),
-            primitive::QSTRING      => len += String::read(s, &mut b[5..]),
-            primitive::QBYTEARRAY   => len += String::read(s, &mut b[5..]),
-            primitive::QSTRINGLIST  => len += StringList::read(s, &mut b[5..]),
-            primitive::BOOL         => len += bool::read(s, &mut b[5..]),
-            primitive::ULONG        => len += u64::read(s, &mut b[5..]),
-            primitive::UINT         => len += u32::read(s, &mut b[5..]),
-            primitive::USHORT       => len += u16::read(s, &mut b[5..]),
-            primitive::UCHAR        => len += u8::read(s, &mut b[5..]),
-            primitive::LONG         => len += i64::read(s, &mut b[5..]),
-            primitive::INT          => len += i32::read(s, &mut b[5..]),
-            primitive::SHORT        => len += i16::read(s, &mut b[5..]),
-            primitive::CHAR         => len += i8::read(s, &mut b[5..]),
+            primitive::QVARIANTMAP  => len += VariantMap::read(s, &mut b[len..]),
+            primitive::QVARIANTLIST => len += VariantList::read(s, &mut b[len..]),
+            primitive::QSTRING      => len += String::read(s, &mut b[len..]),
+            primitive::QBYTEARRAY   => len += String::read(s, &mut b[len..]),
+            primitive::QSTRINGLIST  => len += StringList::read(s, &mut b[len..]),
+            primitive::BOOL         => len += bool::read(s, &mut b[len..]),
+            primitive::ULONG        => len += u64::read(s, &mut b[len..]),
+            primitive::UINT         => len += u32::read(s, &mut b[len..]),
+            primitive::USHORT       => len += u16::read(s, &mut b[len..]),
+            primitive::UCHAR        => len += u8::read(s, &mut b[len..]),
+            primitive::LONG         => len += i64::read(s, &mut b[len..]),
+            primitive::INT          => len += i32::read(s, &mut b[len..]),
+            primitive::SHORT        => len += i16::read(s, &mut b[len..]),
+            primitive::CHAR         => len += i8::read(s, &mut b[len..]),
             _ => return len
         }
 

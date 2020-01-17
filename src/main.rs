@@ -23,11 +23,13 @@ fn main() -> std::io::Result<()> {
 
     let mut features = StringList::new();
     features.push("SynchronizedMarkerLine".to_string());
+    features.push("Authenticators".to_string());
+    features.push("ExtendedFeatures".to_string());
     let client = ClientInit {
         client_version:String::from("Rust 0.0.0"),
         client_date: String::from("1579009211"),
         feature_list: features,
-        client_features: 0,
+        client_features: 0x00008000,
     };
     server.login("audron", "audron", client);
 

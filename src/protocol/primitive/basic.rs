@@ -33,7 +33,6 @@ use byteorder::{ByteOrder, BigEndian, ReadBytesExt};
 
 use std::io::Read;
 use std::vec::Vec;
-use std::net::TcpStream;
 use std::convert::TryInto;
 
 use crate::util;
@@ -46,8 +45,8 @@ impl deserialize::Deserialize for bool {
 }
 
 impl qread::QRead for bool {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
-        s.read(&mut [b[0]]).unwrap()
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
+        s.read(&mut b[0..1]).unwrap()
     }
 }
 
@@ -58,7 +57,7 @@ impl deserialize::Deserialize for u64 {
 }
 
 impl qread::QRead for u64 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..8]).unwrap()
     }
 }
@@ -71,7 +70,7 @@ impl deserialize::Deserialize for u32 {
 }
 
 impl qread::QRead for u32 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..4]).unwrap()
     }
 }
@@ -83,7 +82,7 @@ impl deserialize::Deserialize for u16 {
 }
 
 impl qread::QRead for u16 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..2]).unwrap()
     }
 }
@@ -95,7 +94,7 @@ impl deserialize::Deserialize for u8 {
 }
 
 impl qread::QRead for u8 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut [b[0]]).unwrap()
     }
 }
@@ -107,7 +106,7 @@ impl deserialize::Deserialize for i64 {
 }
 
 impl qread::QRead for i64 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..8]).unwrap()
     }
 }
@@ -120,7 +119,7 @@ impl deserialize::Deserialize for i32 {
 }
 
 impl qread::QRead for i32 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..4]).unwrap()
     }
 }
@@ -132,7 +131,7 @@ impl deserialize::Deserialize for i16 {
 }
 
 impl qread::QRead for i16 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut b[0..2]).unwrap()
     }
 }
@@ -144,7 +143,7 @@ impl deserialize::Deserialize for i8 {
 }
 
 impl qread::QRead for i8 {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         s.read(&mut [b[0]]).unwrap()
     }
 }
@@ -207,7 +206,7 @@ impl deserialize::DeserializeUTF8 for String {
 }
 
 impl qread::QRead for String {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         use crate::protocol::primitive::deserialize::Deserialize;
 
         s.read(&mut b[0..4]).unwrap();
@@ -254,17 +253,17 @@ impl deserialize::Deserialize for StringList {
 }
 
 impl qread::QRead for StringList {
-    fn read(s: &mut TcpStream, b: &mut [u8]) -> usize {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> usize {
         use crate::protocol::primitive::deserialize::Deserialize;
 
         s.read(&mut b[0..4]).unwrap();
         let (_, len) = i32::parse(&b[0..4]);
 
-        let mut pos: usize = 0;
+        let mut pos: usize = 4;
         for _ in 0..len {
             pos += String::read(s, &mut b[pos..]);
         }
 
-        return 4 + pos;
+        return pos;
     }
 }

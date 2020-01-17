@@ -23,17 +23,13 @@ impl Client {
     pub fn login(&mut self, user: &'static str, pass: &'static str, client: message::ClientInit) {
         use crate::protocol::message::handshake::{HandshakeDeserialize, HandshakeSerialize, HandshakeQRead, VariantMap};
         use crate::protocol::message::handshake::{ClientInit, ClientInitAck};
-        use std::convert::TryInto;
 
-        let sclientinit = &client.serialize();
-        let len: u32 = sclientinit.len().try_into().unwrap();
-//        self.tcp_stream.write(&len.to_be_bytes()).unwrap();
-        self.tcp_stream.write(sclientinit).unwrap();
+        self.tcp_stream.write(&client.serialize()).unwrap();
 
         let mut buf: Vec<u8> = [0; 2048].to_vec();
-        VariantMap::read(&mut self.tcp_stream, &mut buf);
+        let len = VariantMap::read(&mut self.tcp_stream, &mut buf);
+        buf.truncate(len);
 
-        // println!("{:?}", buf);
         let res = ClientInitAck::parse(&buf);
         println!("{:?}", res)
     }
