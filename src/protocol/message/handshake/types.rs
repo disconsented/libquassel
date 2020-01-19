@@ -74,18 +74,19 @@ impl HandshakeQRead for VariantMap {
     fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
         s.read(&mut b[0..4])?;
         let (_, len) = i32::parse(&b[0..4])?;
+        let ulen = len as usize;
 
         // Read the 00 00 00 0a VariantType bytes and discard
-        s.read(&mut b[4..8])?;
+        s.read(&mut b[4..ulen])?;
 
-        let mut pos = 8;
-        let len: usize = len as usize;
-        loop {
-            if pos >= len { break; }
-            pos += Variant::read(s, &mut b[pos..])?;
-            pos += Variant::read(s, &mut b[pos..])?;
-        }
+//        let mut pos = 8;
+//        let len: usize = len as usize;
+//        loop {
+//            if pos >= len { break; }
+//            pos += Variant::read(s, &mut b[pos..])?;
+//            pos += Variant::read(s, &mut b[pos..])?;
+//        }
 
-        return Ok(pos);
+        return Ok(ulen + 4);
     }
 }

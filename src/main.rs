@@ -14,11 +14,12 @@ use protocol::primitive::{String, StringList};
 use protocol::message::{ClientInit};
 
 fn main() -> std::io::Result<()> {
+
     let mut server = net::connect(
         "localhost",
         4242,
         false,
-        false,
+        true,
     )?;
 
     let mut features = StringList::new();
