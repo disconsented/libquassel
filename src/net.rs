@@ -21,7 +21,7 @@ use crate::protocol::message;
 use crate::protocol::error::ErrorKind;
 
 pub struct Client {
-    tcp_stream: TcpStream,
+    tcp_stream: ZlibDecoder<TcpStream>,
     encoder: Compress,
     decoder: Decompress,
     pub tls: bool,
@@ -61,7 +61,21 @@ impl Client {
 
 impl std::io::Read for Client {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-        return self.tcp_stream.read(buf);
+//        let mut cbuf = buf.to_vec();
+//        let read_bytes = self.tcp_stream.peek(&mut cbuf);
+//        println!("read bytes: {:?}", read_bytes);
+//        println!("cbuf: {:?}", cbuf);
+//        let decompressed_bytes_pre = self.decoder.total_out();
+//        self.decoder.decompress(&cbuf, buf, FlushDecompress::None)?;
+//        let decompressed_bytes = self.decoder.total_out();
+//        let in_bytes = self.decoder.total_in();
+//        println!("in bytes: {:?}", in_bytes);
+//        println!("decompressed bytes: {:?}", decompressed_bytes);
+//        println!("buf: {:?}", buf);
+//        return Ok(((decompressed_bytes - decompressed_bytes_pre)).try_into().unwrap());
+        let res = self.tcp_stream.read(buf);
+        println!("buf: {:?}, total in: {:?}, total out: {:?}", buf, self.tcp_stream.total_in(), self.tcp_stream.total_out());
+        return res;
     }
 }
 
@@ -69,7 +83,7 @@ impl std::io::Write for Client {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
         let mut cbuf = Vec::with_capacity(buf.len());
         self.encoder.compress_vec(buf, &mut cbuf, FlushCompress::Finish)?;
-        return self.tcp_stream.write(&buf);
+        return self.tcp_stream.write(&cbuf);
     }
 
     fn flush(&mut self) -> Result<(), Error> {
@@ -121,8 +135,9 @@ pub fn connect(address: &'static str, port: u32, tls: bool, compression: bool) -
     println!("Received: {:?}", val);
 
 //    let sock = ZlibDecoder::new_with_buf(s, [0; 1].to_vec());
+    let sock = ZlibDecoder::new(s);
     let server: Client = Client {
-        tcp_stream: s,
+        tcp_stream: sock,
         encoder: Compress::new(Compression::best(), true),
         decoder: Decompress::new(true),
         tls: tls,

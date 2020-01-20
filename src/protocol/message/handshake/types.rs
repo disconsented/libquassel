@@ -77,7 +77,7 @@ impl HandshakeQRead for VariantMap {
         let ulen = len as usize;
 
         // Read the 00 00 00 0a VariantType bytes and discard
-        s.read(&mut b[4..ulen])?;
+        s.read(&mut b[4..(ulen + 4)])?;
 
 //        let mut pos = 8;
 //        let len: usize = len as usize;
