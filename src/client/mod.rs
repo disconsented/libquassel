@@ -12,6 +12,7 @@ use flate2::FlushDecompress;
 use flate2::read::ZlibDecoder;
 
 use tokio::net::TcpStream;
+use tokio::net::tcp::{ReadHalf, WriteHalf};
 use tokio::prelude::*;
 
 use failure::Error;
@@ -27,7 +28,7 @@ pub enum State {
 }
 
 pub struct Client {
-    tcp_stream: TcpStream,
+    stream: TcpStream,
     encoder: Compress,
     decoder: Decompress,
     state: State,
@@ -37,15 +38,13 @@ pub struct Client {
 
 impl Client {
     pub async fn handler(mut self) -> Result<(), Error> {
-//        let (recv, send) = self.tcp_stream.split();
         loop {
             let mut buf: Vec<u8> = vec![0; 2048];
-            match self.tcp_stream.read(&mut buf).await {
+            match self.stream.read(&mut buf).await {
                 Ok(n) => {
                     buf.truncate(n);
                     let mut cbuf: Vec<u8> = vec![0; n * 2];
 
-                    println!("buf: {:?}", &buf[0..]);
                     let before_in = self.decoder.total_in();
                     let before_out = self.decoder.total_out();
                     self.decoder.decompress(&buf, &mut cbuf, FlushDecompress::None)?;
@@ -53,10 +52,6 @@ impl Client {
                     let after_out = self.decoder.total_out();
 
                     cbuf.truncate(after_out.try_into()?);
-
-                    println!("in: {:?} / {:?}\nout: {:?} / {:?}", before_in, after_in, before_out, after_out);
-
-                    println!("buf: {:?}", cbuf);
 
                     match self.state {
                         State::Handshake => handle_login_message(&mut self, &cbuf),
@@ -100,7 +95,7 @@ impl Client {
         println!("Received: {:?}", val);
 
         let mut client = Client {
-            tcp_stream: s,
+            stream: s,
             state: State::Handshake,
             encoder: Compress::new(Compression::best(), true),
             decoder: Decompress::new(true),
@@ -190,20 +185,28 @@ impl Client {
 // }
 
 pub async fn write_to_stream(client: &mut Client, buf: &[u8]) -> Result<usize, Error> {
-    let mut cbuf = Vec::with_capacity(buf.len());
-    client.encoder.compress_vec(buf, &mut cbuf, FlushCompress::Finish)?;
-    return Ok(client.tcp_stream.write(&cbuf).await?);
+    let mut cbuf = vec![0; buf.len()];
+    let before_in = client.encoder.total_in();
+    let before_out = client.encoder.total_out();
+    client.encoder.compress(buf, &mut cbuf, FlushCompress::Full)?;
+    let after_in = client.encoder.total_in();
+    let after_out = client.encoder.total_out();
+    println!("out {:?} - {:?}", after_out, before_out);
+    cbuf.truncate((after_out - before_out).try_into()?);
+    println!("cbuf {:?}", cbuf);
+    let i = client.stream.write(&cbuf).await?;
+    return Ok(i);
 }
 
 pub async fn handle_login_message(client: &mut Client, buf: &[u8]) -> Result<(), Error> {
-    use crate::protocol::primitive::{Variant, VariantMap, StringList};
+    use crate::protocol::primitive::{Variant, StringList};
     use crate::protocol::message::ClientLogin;
-    use crate::protocol::message::handshake::HandshakeSerialize;
-    use crate::protocol::primitive::deserialize::Deserialize;
+    use crate::protocol::message::handshake::{HandshakeSerialize, HandshakeDeserialize, VariantMap};
     use crate::protocol::error::ProtocolError;
     use crate::util::get_msg_type;
 
     let (_, res) = VariantMap::parse(buf)?;
+    println!("res {:?}", res);
     let msgtype = get_msg_type(&res["MsgType"])?;
     match msgtype {
         "ClientInitAck" => {

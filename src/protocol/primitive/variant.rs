@@ -227,7 +227,6 @@ impl Deserialize for Variant {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, qtype) = i32::parse(&b[0..4])?;
         let qtype = qtype as u32;
-        println!("type: {:?}", &b[0..4]);
 
         #[allow(unused_variables)]
         let unknown: u8 = b[4];
