@@ -35,126 +35,128 @@ use std::vec::Vec;
 use std::result::Result;
 use std::convert::TryInto;
 
+use failure::Error;
+
 use crate::util;
-use crate::protocol::error::ErrorKind;
+use crate::protocol::error::ProtocolError;
 use crate::protocol::primitive::{deserialize, serialize, qread};
 
 impl deserialize::Deserialize for bool {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         if b[0] == 0 {
             return Ok((1, false))
         } else if b[0] == 1 {
             return Ok((1, true))
         } else {
-            return Err(ErrorKind::BoolOutOfRange);
+            bail!(ProtocolError::BoolOutOfRange);
         };
     }
 }
 
 impl qread::QRead for bool {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..1])?)
     }
 }
 
 impl deserialize::Deserialize for u64 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..8]);
         return Ok((8, rdr.read_u64::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for u64 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..8])?)
     }
 }
 
 impl deserialize::Deserialize for u32 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..4]);
         return Ok((4, rdr.read_u32::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for u32 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..4])?)
     }
 }
 
 impl deserialize::Deserialize for u16 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..2]);
         return Ok((2, rdr.read_u16::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for u16 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..2])?)
     }
 }
 
 impl deserialize::Deserialize for u8 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         return Ok((1, b[0]));
     }
 }
 
 impl qread::QRead for u8 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut [b[0]])?)
     }
 }
 
 impl deserialize::Deserialize for i64 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..8]);
         return Ok((8, rdr.read_i64::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for i64 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..8])?)
     }
 }
 
 impl deserialize::Deserialize for i32 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..4]);
         return Ok((4, rdr.read_i32::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for i32 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..4])?)
     }
 }
 
 impl deserialize::Deserialize for i16 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..2]);
         return Ok((2, rdr.read_i16::<BigEndian>()?));
     }
 }
 
 impl qread::QRead for i16 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         Ok(s.read(&mut b[0..2])?)
     }
 }
 
 impl deserialize::Deserialize for i8 {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         return Ok((1, b[0].try_into()?));
     }
 }
 
 impl qread::QRead for i8 {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         return Ok(s.read(&mut [b[0]])?)
     }
 }
@@ -163,7 +165,7 @@ impl qread::QRead for i8 {
 
 pub type String = std::string::String;
 impl serialize::Serialize for String {
-    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
 
         let utf16: Vec<u16> = self.encode_utf16().collect();
@@ -177,7 +179,7 @@ impl serialize::Serialize for String {
 }
 
 impl serialize::SerializeUTF8 for String {
-    fn serialize_utf8(&self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize_utf8(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.clone().into_bytes());
         util::prepend_byte_len(&mut res);
@@ -186,7 +188,7 @@ impl serialize::SerializeUTF8 for String {
 }
 
 impl deserialize::Deserialize for String {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
 
         let ulen = len as usize;
@@ -205,7 +207,7 @@ impl deserialize::Deserialize for String {
 }
 
 impl deserialize::DeserializeUTF8 for String {
-    fn parse_utf8(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse_utf8(b: &[u8]) -> Result<(usize, Self), Error> {
         use crate::protocol::primitive::deserialize::Deserialize;
         let (_, len) = i32::parse(&b[0..4])?;
 
@@ -217,7 +219,7 @@ impl deserialize::DeserializeUTF8 for String {
 }
 
 impl qread::QRead for String {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         use crate::protocol::primitive::deserialize::Deserialize;
 
         s.read(&mut b[0..4])?;
@@ -232,7 +234,7 @@ impl qread::QRead for String {
 
 pub type StringList = Vec<String>;
 impl serialize::Serialize for StringList {
-    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize(&self) -> Result<Vec<u8>, Error> {
         let len: i32 = self.len().try_into()?;
         let mut res: Vec<u8> = Vec::new();
 
@@ -246,7 +248,7 @@ impl serialize::Serialize for StringList {
 }
 
 impl deserialize::Deserialize for StringList {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
         let mut res: StringList = StringList::new();
 
@@ -264,7 +266,7 @@ impl deserialize::Deserialize for StringList {
 }
 
 impl qread::QRead for StringList {
-    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: std::io::Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         use crate::protocol::primitive::deserialize::Deserialize;
 
         s.read(&mut b[0..4])?;

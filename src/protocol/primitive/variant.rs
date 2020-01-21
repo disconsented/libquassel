@@ -1,20 +1,22 @@
+use std::io::Read;
 use std::vec::Vec;
 use std::convert::TryInto;
 use std::collections::HashMap;
 
-use std::io::Read;
+use failure::Error;
+
 use crate::util;
 use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
 use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
 use crate::protocol::primitive::qread::QRead;
 use crate::protocol::primitive::{String,StringList};
-use crate::protocol::error::ErrorKind;
+use crate::protocol::error::ProtocolError;
 use crate::protocol::primitive;
 
 pub type VariantMap = HashMap<String, Variant>;
 
 impl Serialize for VariantMap {
-    fn serialize<'a>(&'a self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize<'a>(&'a self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
 
         for (k, v) in self {
@@ -30,7 +32,7 @@ impl Serialize for VariantMap {
 }
 
 impl Deserialize for VariantMap {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
 
         let mut pos = 4;
@@ -50,7 +52,7 @@ impl Deserialize for VariantMap {
 }
 
 impl QRead for VariantMap {
-    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         s.read(&mut b[0..4])?;
 
 
@@ -70,7 +72,7 @@ impl QRead for VariantMap {
 pub type VariantList = Vec<Variant>;
 
 impl Serialize for VariantList {
-    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize(&self) -> Result<Vec<u8>, Error> {
         let len: i32 = self.len().try_into()?;
         let mut res: Vec<u8> = Vec::new();
 
@@ -84,7 +86,7 @@ impl Serialize for VariantList {
 }
 
 impl Deserialize for VariantList {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
 
         let mut res: VariantList = VariantList::new();
@@ -100,7 +102,7 @@ impl Deserialize for VariantList {
 }
 
 impl QRead for VariantList {
-    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         s.read(&mut b[0..4])?;
 
         let (_, len) = i32::parse(&b[0..4])?;
@@ -136,13 +138,13 @@ pub enum Variant {
 }
 
 impl Serialize for Variant {
-    fn serialize(&self) -> Result<Vec<u8>, ErrorKind> {
+    fn serialize(&self) -> Result<Vec<u8>, Error> {
         let unknown: u8 = 0x00;
         let mut res: Vec<u8> = Vec::new();
 
         match self {
             Variant::Unknown => {
-               return Err(ErrorKind::UnknownVariant);
+               bail!(ProtocolError::UnknownVariant);
             },
             Variant::VariantMap(v) => {
                 res.extend(primitive::QVARIANTMAP.to_be_bytes().iter());
@@ -222,9 +224,10 @@ impl Serialize for Variant {
 }
 
 impl Deserialize for Variant {
-    fn parse(b: &[u8]) -> Result<(usize, Self), ErrorKind> {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, qtype) = i32::parse(&b[0..4])?;
         let qtype = qtype as u32;
+        println!("type: {:?}", &b[0..4]);
 
         #[allow(unused_variables)]
         let unknown: u8 = b[4];
@@ -288,14 +291,14 @@ impl Deserialize for Variant {
                 return Ok((len+vlen, Variant::i8(value)));
             },
             _ => {
-                return Err(ErrorKind::UnknownVariant);
+                bail!(ProtocolError::UnknownVariant);
             }
         }
     }
 }
 
 impl QRead for Variant {
-    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, ErrorKind> {
+    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
 
         s.read(&mut b[0..4])?;
         let (_, qtype) = i32::parse(&b[0..4])?;
@@ -319,7 +322,7 @@ impl QRead for Variant {
             primitive::INT          => len += i32::read(s, &mut b[len..])?,
             primitive::SHORT        => len += i16::read(s, &mut b[len..])?,
             primitive::CHAR         => len += i8::read(s, &mut b[len..])?,
-            _ => return Err(ErrorKind::UnknownVariant)
+            _ => bail!(ProtocolError::UnknownVariant)
         }
 
         return Ok(len);

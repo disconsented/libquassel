@@ -24,6 +24,18 @@ macro_rules! match_variant {
     }
 }
 
+use crate::protocol::primitive::{Variant, String};
+use crate::protocol::error::ProtocolError;
+use failure::Error;
+
+pub fn get_msg_type(val: &Variant) -> Result<&str, Error> {
+    match val {
+        Variant::String(x) => return Ok(x),
+        Variant::StringUTF8(x) => return Ok(x),
+        _ => bail!(ProtocolError::WrongVariant)
+    };
+}
+
 pub fn prepend_byte_len(buf: &mut Vec<u8>) {
     use std::convert::TryInto;
     let len: i32 = buf.len().try_into().unwrap();
