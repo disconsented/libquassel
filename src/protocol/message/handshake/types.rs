@@ -37,10 +37,8 @@ impl HandshakeSerialize for VariantMap {
             res.extend(v.serialize()?);
         }
 
-        util::insert_bytes(0, &mut res, &mut [0, 0, 0, 10]);
-
-        let len: i32 = res.len().try_into().unwrap();
-        util::insert_bytes(0, &mut res, &mut ((len).to_be_bytes()));
+        let len: i32 = (self.len() * 2).try_into().unwrap();
+        util::insert_bytes(0, &mut res, &mut (len).to_be_bytes());
 
         return Ok(res);
     }
@@ -50,11 +48,10 @@ impl HandshakeDeserialize for VariantMap {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
 
-        let mut pos: usize = 8;
+        let mut pos: usize = 4;
         let mut map = VariantMap::new();
-        let ulen: usize = len as usize;
-        loop {
-            if (pos) >= ulen { break; }
+
+        for _ in 0..(len / 2) {
             let (nlen, name) = Variant::parse(&b[pos..])?;
             pos += nlen;
 
@@ -76,10 +73,12 @@ impl HandshakeQRead for VariantMap {
     fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
         s.read(&mut b[0..4])?;
         let (_, len) = i32::parse(&b[0..4])?;
-        let ulen = len as usize;
 
-        // Read the 00 00 00 0a VariantType bytes and discard
-        s.read(&mut b[4..(ulen + 4)])?;
+        let mut pos = 4;
+        for _ in 0..(len / 2) {
+            pos += Variant::read(s, &mut b[pos..])?;
+            pos += Variant::read(s, &mut b[pos..])?;
+        }
 
 //        let mut pos = 8;
 //        let len: usize = len as usize;
@@ -89,6 +88,6 @@ impl HandshakeQRead for VariantMap {
 //            pos += Variant::read(s, &mut b[pos..])?;
 //        }
 
-        return Ok(ulen + 4);
+        return Ok(pos);
     }
 }

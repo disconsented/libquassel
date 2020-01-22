@@ -24,7 +24,7 @@ macro_rules! match_variant {
     }
 }
 
-use crate::protocol::primitive::{Variant, String};
+use crate::protocol::primitive::{Variant};
 use crate::protocol::error::ProtocolError;
 use failure::Error;
 
