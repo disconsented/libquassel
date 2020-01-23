@@ -1,20 +1,10 @@
-mod consts;
-
-#[cfg(features = "client")]
-mod client;
-
-mod protocol;
-
-#[macro_use]
-mod util;
-
-#[macro_use]
-extern crate failure;
-
-#[cfg(test)]
-mod tests;
-
 use failure::Error;
+
+extern crate libquassel;
+use libquassel::client;
+
+#[macro_use]
+extern crate tokio;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
