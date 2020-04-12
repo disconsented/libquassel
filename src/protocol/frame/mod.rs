@@ -1,7 +1,7 @@
-use std::error::Error as StdError;
-use std::io::{self, Cursor};
 use std::convert::TryInto;
+use std::error::Error as StdError;
 use std::fmt;
+use std::io::{self, Cursor};
 
 use bytes::{Buf, BufMut, BytesMut};
 
@@ -10,8 +10,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{Decoder, Encoder, Framed, FramedRead, FramedWrite};
 
 use flate2::Compress;
-use flate2::Decompress;
 use flate2::Compression;
+use flate2::Decompress;
 use flate2::FlushCompress;
 use flate2::FlushDecompress;
 
@@ -61,6 +61,10 @@ impl QuasselCodec {
         Builder::new()
     }
 
+    pub fn max_frame_length(&self) -> usize {
+        self.builder.max_frame_len
+    }
+
     pub fn compression(&self) -> bool {
         self.builder.compression
     }
@@ -78,20 +82,19 @@ impl QuasselCodec {
     }
 
     fn decode_head(&mut self, src: &mut BytesMut) -> io::Result<Option<usize>> {
-//        let head_len = self.builder.num_head_bytes();
-        let field_len = 4;
+        let head_len = 4;
 
-        if src.len() < field_len {
+        if src.len() < head_len {
             // Not enough data
             return Ok(None);
         }
 
-        let n = {
+        let field_len = {
             let mut src = Cursor::new(&mut *src);
 
-            let n = src.get_uint(field_len);
+            let field_len = src.get_uint(head_len);
 
-            if n > self.builder.max_frame_len as u64 {
+            if field_len > self.builder.max_frame_len as u64 {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     QuasselCodecError { _priv: () },
@@ -99,18 +102,17 @@ impl QuasselCodec {
             }
 
             // The check above ensures there is no overflow
-            let n = n as usize;
-            n
+            field_len as usize
         };
 
         // Strip header
-        let _ = src.split_to(4);
+        let _ = src.split_to(head_len);
 
         // Ensure that the buffer has enough space to read the incoming
         // payload
-        src.reserve(n);
+        src.reserve(field_len);
 
-        Ok(Some(n))
+        Ok(Some(field_len))
     }
 
     fn decode_data(&self, n: usize, src: &mut BytesMut) -> io::Result<Option<BytesMut>> {
@@ -124,29 +126,39 @@ impl QuasselCodec {
     }
 }
 
-
 impl Decoder for QuasselCodec {
     type Item = BytesMut;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<BytesMut>, io::Error> {
-        let mut buf = vec![0; src.len() * 2];
-
-        println!("src: {:?}", &src[..]);
+        // Create Unified Buffer for compressed and not compressed datastream
+        let mut buf: &mut BytesMut = &mut BytesMut::new();
 
         if self.builder.compression == true {
+            // Buffer to shove uncompressed stream into
+            let mut msg = Vec::with_capacity(self.builder.max_frame_len);
+
             let before_in = self.decomp.total_in();
             let before_out = self.decomp.total_out();
-            self.decomp.decompress(&src, &mut buf, FlushDecompress::None)?;
+
+            self.decomp
+                .decompress_vec(&src, &mut msg, FlushDecompress::None)?;
+            // Clear the src buffer, decompress() only peeks at content.
+            // without this we will endlessly loop over the same frame.
+            src.clear();
+
             let after_in = self.decomp.total_in();
             let after_out = self.decomp.total_out();
 
-            buf.truncate((after_out - before_out).try_into().unwrap());
-        } else {
-            buf = src.to_vec();
-        }
+            let len = (after_out - before_out).try_into().unwrap();
 
-        let buf = &mut BytesMut::from(&buf[..]);
+            // Reserve length of uncompressed stream
+            // and put bytes into there
+            buf.reserve(len);
+            buf.put(&msg[..]);
+        } else {
+            buf = src;
+        }
 
         let n = match self.state {
             DecodeState::Head => match self.decode_head(buf)? {
@@ -200,7 +212,7 @@ impl Encoder for QuasselCodec {
         buf.extend_from_slice(&data[..]);
 
         if self.builder.compression {
-            let mut cbuf: Vec<u8> = vec![0; 4+n];
+            let mut cbuf: Vec<u8> = vec![0; 4 + n];
             let before_in = self.comp.total_in();
             let before_out = self.comp.total_out();
             self.comp.compress(buf, &mut cbuf, FlushCompress::Full)?;
@@ -223,7 +235,6 @@ impl Default for QuasselCodec {
     }
 }
 
-
 // ===== impl Builder =====
 
 impl Builder {
@@ -234,14 +245,10 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use tokio_util::codec::QuasselCodec;
+    /// use libquassel::protocol::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
-    ///     .length_field_offset(0)
-    ///     .length_field_length(2)
-    ///     .length_adjustment(0)
-    ///     .num_skip(0)
     ///     .new_read(io);
     /// # }
     /// # pub fn main() {}
@@ -281,7 +288,7 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use tokio_util::codec::QuasselCodec;
+    /// use libquassel::protocol::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
@@ -300,13 +307,9 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// use tokio_util::codec::QuasselCodec;
+    /// use libquassel::protocol::frame::QuasselCodec;
     /// # pub fn main() {
     /// QuasselCodec::builder()
-    ///     .length_field_offset(0)
-    ///     .length_field_length(2)
-    ///     .length_adjustment(0)
-    ///     .num_skip(0)
     ///     .new_codec();
     /// # }
     /// ```
@@ -325,14 +328,10 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use tokio_util::codec::QuasselCodec;
+    /// use libquassel::protocol::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
-    ///     .length_field_offset(0)
-    ///     .length_field_length(2)
-    ///     .length_adjustment(0)
-    ///     .num_skip(0)
     ///     .new_read(io);
     /// # }
     /// # pub fn main() {}
@@ -350,10 +349,9 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::AsyncWrite;
-    /// # use tokio_util::codec::QuasselCodec;
+    /// # use libquassel::protocol::frame::QuasselCodec;
     /// # fn write_frame<T: AsyncWrite>(io: T) {
     /// QuasselCodec::builder()
-    ///     .length_field_length(2)
     ///     .new_write(io);
     /// # }
     /// # pub fn main() {}
@@ -371,11 +369,10 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::{AsyncRead, AsyncWrite};
-    /// # use tokio_util::codec::QuasselCodec;
+    /// # use libquassel::protocol::frame::QuasselCodec;
     /// # fn write_frame<T: AsyncRead + AsyncWrite>(io: T) {
     /// # let _ =
     /// QuasselCodec::builder()
-    ///     .length_field_length(2)
     ///     .new_framed(io);
     /// # }
     /// # pub fn main() {}

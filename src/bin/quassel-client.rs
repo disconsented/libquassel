@@ -13,7 +13,7 @@ async fn main() -> Result<(), Error> {
         "localhost",
         4242,
         false,
-        false,
+        true,
     ).await.unwrap();
 
     client.run().await;
