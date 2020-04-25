@@ -10,6 +10,5 @@ pub mod client;
 #[cfg(test)]
 pub mod tests;
 
-
 #[macro_use]
 extern crate failure;

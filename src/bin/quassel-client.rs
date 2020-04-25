@@ -3,16 +3,22 @@ use failure::Error;
 extern crate libquassel;
 use libquassel::client;
 
-#[macro_use]
 extern crate tokio;
+extern crate pretty_env_logger;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    pretty_env_logger::init();
 
-    let mut client = client::Client::connect(
-        "localhost",
+//    let mut client = client::Client::<tokio::net::TcpStream>::connect(
+//        "cocaine.farm",
+//        4242,
+//        true,
+//    ).await.unwrap();
+
+    let mut client = client::Client::<tokio_tls::TlsStream<tokio::net::TcpStream>>::connect_tls(
+        "cocaine.farm",
         4242,
-        false,
         true,
     ).await.unwrap();
 

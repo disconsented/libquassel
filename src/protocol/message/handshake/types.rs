@@ -1,28 +1,24 @@
-use std::io::Read;
-use std::vec::Vec;
-use std::result::Result;
-use std::convert::TryInto;
 use std::collections::HashMap;
+use std::convert::TryInto;
+use std::result::Result;
+use std::vec::Vec;
 
 use failure::Error;
 
-use crate::util;
-use crate::protocol::primitive::{String, Variant};
-use crate::protocol::primitive::serialize::Serialize;
-use crate::protocol::primitive::deserialize::Deserialize;
-use crate::protocol::primitive::qread::QRead;
 use crate::protocol::error::ProtocolError;
+use crate::protocol::primitive::deserialize::Deserialize;
+use crate::protocol::primitive::serialize::Serialize;
+use crate::protocol::primitive::{String, Variant};
+use crate::util;
 
 pub trait HandshakeSerialize {
     fn serialize(&self) -> Result<Vec<u8>, Error>;
 }
 
 pub trait HandshakeDeserialize {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error> where Self: std::marker::Sized ;
-}
-
-pub trait HandshakeQRead {
-    fn read<T: Read>(stream: &mut T, buf: &mut [u8]) -> Result<usize, Error>;
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error>
+    where
+        Self: std::marker::Sized;
 }
 
 pub type VariantMap = HashMap<String, Variant>;
@@ -61,33 +57,10 @@ impl HandshakeDeserialize for VariantMap {
             match name {
                 Variant::String(x) => map.insert(x, value),
                 Variant::StringUTF8(x) => map.insert(x, value),
-                _ => bail!(ProtocolError::WrongVariant)
+                _ => bail!(ProtocolError::WrongVariant),
             };
         }
 
         return Ok((pos, map));
-    }
-}
-
-impl HandshakeQRead for VariantMap {
-    fn read<T: Read>(s: &mut T, b: &mut [u8]) -> Result<usize, Error> {
-        s.read(&mut b[0..4])?;
-        let (_, len) = i32::parse(&b[0..4])?;
-
-        let mut pos = 4;
-        for _ in 0..(len / 2) {
-            pos += Variant::read(s, &mut b[pos..])?;
-            pos += Variant::read(s, &mut b[pos..])?;
-        }
-
-//        let mut pos = 8;
-//        let len: usize = len as usize;
-//        loop {
-//            if pos >= len { break; }
-//            pos += Variant::read(s, &mut b[pos..])?;
-//            pos += Variant::read(s, &mut b[pos..])?;
-//        }
-
-        return Ok(pos);
     }
 }

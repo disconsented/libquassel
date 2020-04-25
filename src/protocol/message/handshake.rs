@@ -1,50 +1,67 @@
-use std::result::Result;
 use failure::Error;
+use std::result::Result;
 
 use crate::protocol::error::ProtocolError;
 use crate::protocol::primitive::{String, StringList, Variant, VariantList};
 use crate::util::get_msg_type;
 
 mod types;
-pub use types::{VariantMap, HandshakeDeserialize, HandshakeSerialize, HandshakeQRead};
+pub use types::{HandshakeDeserialize, HandshakeSerialize, VariantMap};
 
 use crate::match_variant;
-
 
 #[derive(Debug)]
 pub struct ConnAck {
     flags: u8,
     extra: i16,
-    version: i8
+    version: i8,
 }
 
 impl crate::protocol::primitive::deserialize::Deserialize for ConnAck {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (flen, flags) = u8::parse(b)?;
         let (elen, extra) = i16::parse(&b[flen..])?;
-        let (vlen, version) = i8::parse(&b[(flen+elen)..])?;
+        let (vlen, version) = i8::parse(&b[(flen + elen)..])?;
 
-        return Ok((flen+elen+vlen, Self {flags, extra, version}));
+        return Ok((
+            flen + elen + vlen,
+            Self {
+                flags,
+                extra,
+                version,
+            },
+        ));
     }
 }
-
 
 #[derive(Debug)]
 pub struct ClientInit {
     pub client_version: String, // Version of the client
-    pub client_date: String, // Build date of the client
+    pub client_date: String,    // Build date of the client
     pub client_features: u32,
-    pub feature_list: StringList // List of supported extended features
+    pub feature_list: StringList, // List of supported extended features
 }
 
 impl HandshakeSerialize for ClientInit {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(5);
-        values.insert("MsgType".to_string(), Variant::String("ClientInit".to_string()));
-        values.insert("ClientVersion".to_string(), Variant::String(self.client_version.clone()));
-        values.insert("ClientDate".to_string(), Variant::String(self.client_date.clone()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientInit".to_string()),
+        );
+        values.insert(
+            "ClientVersion".to_string(),
+            Variant::String(self.client_version.clone()),
+        );
+        values.insert(
+            "ClientDate".to_string(),
+            Variant::String(self.client_date.clone()),
+        );
         values.insert("Features".to_string(), Variant::u32(self.client_features));
-        values.insert("FeatureList".to_string(), Variant::StringList(self.feature_list.clone()));
+        values.insert(
+            "FeatureList".to_string(),
+            Variant::StringList(self.feature_list.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -56,12 +73,15 @@ impl HandshakeDeserialize for ClientInit {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientInit" {
-            return Ok((len, Self {
-                client_version: match_variant!(values, Variant::String, "ClientVersion"),
-                client_date: match_variant!(values, Variant::String, "ClientDate"),
-                feature_list: match_variant!(values, Variant::StringList, "FeatureList"),
-                client_features: match_variant!(values, Variant::u32, "Features")
-            }));
+            return Ok((
+                len,
+                Self {
+                    client_version: match_variant!(values, Variant::String, "ClientVersion"),
+                    client_date: match_variant!(values, Variant::String, "ClientDate"),
+                    feature_list: match_variant!(values, Variant::StringList, "FeatureList"),
+                    client_features: match_variant!(values, Variant::u32, "Features"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
@@ -70,14 +90,20 @@ impl HandshakeDeserialize for ClientInit {
 
 #[derive(Debug)]
 pub struct ClientInitReject {
-    pub error_string: String
+    pub error_string: String,
 }
 
 impl HandshakeSerialize for ClientInitReject {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(2);
-        values.insert("MsgType".to_string(), Variant::String("ClientInitReject".to_string()));
-        values.insert("ErrorString".to_string(), Variant::String(self.error_string.clone()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientInitReject".to_string()),
+        );
+        values.insert(
+            "ErrorString".to_string(),
+            Variant::String(self.error_string.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -89,9 +115,12 @@ impl HandshakeDeserialize for ClientInitReject {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientInitReject" {
-            return Ok((len, Self {
-                error_string: match_variant!(values, Variant::String, "ErrorString")
-            }));
+            return Ok((
+                len,
+                Self {
+                    error_string: match_variant!(values, Variant::String, "ErrorString"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
@@ -100,22 +129,37 @@ impl HandshakeDeserialize for ClientInitReject {
 
 #[derive(Debug)]
 pub struct ClientInitAck {
-    pub core_features: u32, // Flags of supported legacy features
-    pub core_configured: bool, // If the core has already been configured
+    pub core_features: u32,            // Flags of supported legacy features
+    pub core_configured: bool,         // If the core has already been configured
     pub storage_backends: VariantList, // List of VariantMaps of info on available backends
-    pub authenticators: VariantList, // List of VariantMaps of info on available authenticators
-    pub feature_list: StringList, // List of supported extended features
+    pub authenticators: VariantList,   // List of VariantMaps of info on available authenticators
+    pub feature_list: StringList,      // List of supported extended features
 }
 
 impl HandshakeSerialize for ClientInitAck {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(6);
-        values.insert("MsgType".to_string(), Variant::String("ClientInitAck".to_string()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientInitAck".to_string()),
+        );
         values.insert("CoreFeatures".to_string(), Variant::u32(self.core_features));
-        values.insert("Configured".to_string(), Variant::bool(self.core_configured));
-        values.insert("StorageBackends".to_string(), Variant::VariantList(self.storage_backends.clone()));
-        values.insert("Authenticators".to_string(), Variant::VariantList(self.authenticators.clone()));
-        values.insert("FeatureList".to_string(), Variant::StringList(self.feature_list.clone()));
+        values.insert(
+            "Configured".to_string(),
+            Variant::bool(self.core_configured),
+        );
+        values.insert(
+            "StorageBackends".to_string(),
+            Variant::VariantList(self.storage_backends.clone()),
+        );
+        values.insert(
+            "Authenticators".to_string(),
+            Variant::VariantList(self.authenticators.clone()),
+        );
+        values.insert(
+            "FeatureList".to_string(),
+            Variant::StringList(self.feature_list.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -127,13 +171,20 @@ impl HandshakeDeserialize for ClientInitAck {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientInitAck" {
-            return Ok((len, Self {
-                core_features: 0x00008000,
-                core_configured: match_variant!(values, Variant::bool, "Configured"),
-                storage_backends: match_variant!(values, Variant::VariantList, "StorageBackends"),
-                authenticators: match_variant!(values, Variant::VariantList, "Authenticators"),
-                feature_list: match_variant!(values, Variant::StringList, "FeatureList")
-            }));
+            return Ok((
+                len,
+                Self {
+                    core_features: 0x00008000,
+                    core_configured: match_variant!(values, Variant::bool, "Configured"),
+                    storage_backends: match_variant!(
+                        values,
+                        Variant::VariantList,
+                        "StorageBackends"
+                    ),
+                    authenticators: match_variant!(values, Variant::VariantList, "Authenticators"),
+                    feature_list: match_variant!(values, Variant::StringList, "FeatureList"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
@@ -143,15 +194,21 @@ impl HandshakeDeserialize for ClientInitAck {
 #[derive(Debug)]
 pub struct ClientLogin {
     pub user: String,
-    pub password: String
+    pub password: String,
 }
 
 impl HandshakeSerialize for ClientLogin {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::new();
-        values.insert("MsgType".to_string(), Variant::String("ClientLogin".to_string()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientLogin".to_string()),
+        );
         values.insert("User".to_string(), Variant::String(self.user.clone()));
-        values.insert("Password".to_string(), Variant::String(self.password.clone()));
+        values.insert(
+            "Password".to_string(),
+            Variant::String(self.password.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -163,10 +220,13 @@ impl HandshakeDeserialize for ClientLogin {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientLogin" {
-            return Ok((len, Self {
-                user: match_variant!(values, Variant::String, "User"),
-                password: match_variant!(values, Variant::String, "Password")
-            }));
+            return Ok((
+                len,
+                Self {
+                    user: match_variant!(values, Variant::String, "User"),
+                    password: match_variant!(values, Variant::String, "Password"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
@@ -179,7 +239,10 @@ pub struct ClientLoginAck;
 impl HandshakeSerialize for ClientLoginAck {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(1);
-        values.insert("MsgType".to_string(), Variant::String("ClientLoginAck".to_string()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientLoginAck".to_string()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -200,14 +263,20 @@ impl HandshakeDeserialize for ClientLoginAck {
 
 #[derive(Debug)]
 pub struct ClientLoginReject {
-    error: String
+    error: String,
 }
 
 impl HandshakeSerialize for ClientLoginReject {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(1);
-        values.insert("MsgType".to_string(), Variant::String("ClientLoginReject".to_string()));
-        values.insert("ErrorString".to_string(), Variant::String(self.error.clone()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("ClientLoginReject".to_string()),
+        );
+        values.insert(
+            "ErrorString".to_string(),
+            Variant::String(self.error.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -219,7 +288,12 @@ impl HandshakeDeserialize for ClientLoginReject {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientLogin" {
-            return Ok((len, Self { error: match_variant!(values, Variant::String, "ErrorString")}));
+            return Ok((
+                len,
+                Self {
+                    error: match_variant!(values, Variant::String, "ErrorString"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
@@ -236,10 +310,22 @@ pub struct SessionInit {
 impl HandshakeSerialize for SessionInit {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: VariantMap = VariantMap::with_capacity(1);
-        values.insert("MsgType".to_string(), Variant::String("SessionInit".to_string()));
-        values.insert("Identities".to_string(), Variant::VariantList(self.identities.clone()));
-        values.insert("BufferInfos".to_string(), Variant::VariantList(self.buffers.clone()));
-        values.insert("NetworkIds".to_string(), Variant::VariantList(self.network_ids.clone()));
+        values.insert(
+            "MsgType".to_string(),
+            Variant::String("SessionInit".to_string()),
+        );
+        values.insert(
+            "Identities".to_string(),
+            Variant::VariantList(self.identities.clone()),
+        );
+        values.insert(
+            "BufferInfos".to_string(),
+            Variant::VariantList(self.buffers.clone()),
+        );
+        values.insert(
+            "NetworkIds".to_string(),
+            Variant::VariantList(self.network_ids.clone()),
+        );
         return HandshakeSerialize::serialize(&values);
     }
 }
@@ -251,11 +337,14 @@ impl HandshakeDeserialize for SessionInit {
         let msgtype = get_msg_type(&values["MsgType"])?;
 
         if msgtype == "ClientLogin" {
-            return Ok((len, Self {
-                identities: match_variant!(values, Variant::VariantList, "Identities"),
-                buffers: match_variant!(values, Variant::VariantList, "BufferInfos"),
-                network_ids: match_variant!(values, Variant::VariantList, "NetworkIds")
-            }));
+            return Ok((
+                len,
+                Self {
+                    identities: match_variant!(values, Variant::VariantList, "Identities"),
+                    buffers: match_variant!(values, Variant::VariantList, "BufferInfos"),
+                    network_ids: match_variant!(values, Variant::VariantList, "NetworkIds"),
+                },
+            ));
         } else {
             bail!(ProtocolError::WrongMsgType);
         }
