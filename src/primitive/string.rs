@@ -7,11 +7,15 @@ use failure::Error;
 
 use log::trace;
 
-use crate::protocol::primitive::{deserialize, serialize};
+use crate::{Deserialize, DeserializeUTF8, Serialize, SerializeUTF8};
 use crate::util;
 
-pub type String = std::string::String;
-impl serialize::Serialize for String {
+/// We Shadow the String type here as we can only use impl on types in our own scope.
+///
+/// Strings are serialized as an i32 for the length in bytes, then the chars represented in UTF-16 in bytes.
+///
+/// Strings can only be serialized as UTF-8 null-terminated ByteArrays with (de)serialize_utf8().
+impl Serialize for String {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -25,7 +29,7 @@ impl serialize::Serialize for String {
     }
 }
 
-impl serialize::SerializeUTF8 for String {
+impl SerializeUTF8 for String {
     fn serialize_utf8(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.clone().into_bytes());
@@ -35,11 +39,11 @@ impl serialize::SerializeUTF8 for String {
     }
 }
 
-impl deserialize::Deserialize for String {
+impl Deserialize for String {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         // Parse Length
         let (_, len) = i32::parse(&b[0..4])?;
-        trace!(target: "protocol::primitive::String", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
+        trace!(target: "primitive::String", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
 
         if len == -1 {
             return Ok((4, "".to_string()));
@@ -64,12 +68,11 @@ impl deserialize::Deserialize for String {
     }
 }
 
-impl deserialize::DeserializeUTF8 for String {
+impl DeserializeUTF8 for String {
     fn parse_utf8(b: &[u8]) -> Result<(usize, Self), Error> {
-        use crate::protocol::primitive::deserialize::Deserialize;
         let (_, len) = i32::parse(&b[0..4])?;
 
-        trace!(target: "protocol::primitive::String", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
+        trace!(target: "primitive::String", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
 
         if len <= 0 {
             return Ok((4, "".to_string()));

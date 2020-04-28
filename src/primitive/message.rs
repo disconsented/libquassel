@@ -2,26 +2,41 @@ use std::vec::Vec;
 
 use failure::Error;
 
-use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
-use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
+use crate::{Deserialize, DeserializeUTF8};
+use crate::{Serialize, SerializeUTF8};
 
-use crate::protocol::primitive::BufferInfo;
-use crate::protocol::primitive::String;
+use crate::primitive::BufferInfo;
 
 extern crate bytes;
 
+/// The Message struct represents a Message as received in IRC
+///
+/// Messages are, like all other struct based types, serialized sequentially.
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct Message {
-    pub msg_id: i32,    // The unique, sequential id for the message
-    pub timestamp: i64, // The timestamp of the message in UNIX time (32-bit, seconds, 64-bit if LONGMESSAGE feature enabled)
+    /// The unique, sequential id for the message
+    pub msg_id: i32,
+    /// The timestamp of the message in UNIX time (32-bit, seconds, 64-bit if LONGMESSAGE feature enabled)
+    pub timestamp: i64,
+    /// The message type as it's own type serialized as i32
     pub msg_type: MessageType,
+    /// The flags
     pub flags: i8,
-    pub buffer: BufferInfo, // The buffer the message belongs to, usually everything but BufferId is set to NULL
-    pub sender: String,     // The sender as nick!ident@host
-    pub sender_prefixes: Option<String>, // The prefix modes of the sender
-    pub real_name: Option<String>, // The realName of the sender
-    pub avatar_url: Option<String>, // The avatarUrl of the sender, if available
-    pub content: String, // The message content, already stripped from CTCP formatting, but containing mIRC format codes
+    /// The buffer the message belongs to, usually everything but BufferId is set to NULL
+    pub buffer: BufferInfo,
+    /// The sender as nick!ident@host
+    pub sender: String,
+    /// The prefix modes of the sender.
+    /// Only Some when the SenderPrefix features is enabled
+    pub sender_prefixes: Option<String>,
+    /// The realName of the sender
+    /// Only Some when the RichMessage features is enabled
+    pub real_name: Option<String>,
+    /// The avatarUrl of the sender, if available
+    /// Only Some when the RichMessage features is enabled
+    pub avatar_url: Option<String>,
+    /// The message content, already stripped from CTCP formatting, but containing mIRC format codes
+    pub content: String,
 }
 
 impl Serialize for Message {
@@ -155,6 +170,7 @@ pub enum MessageType {
     NetsplitJoin = 0x00008000,
     NetsplitQuit = 0x00010000,
     Invite = 0x00020000,
+    Markerline = 0x00040000,
 }
 
 impl From<i32> for MessageType {
@@ -178,6 +194,7 @@ impl From<i32> for MessageType {
             0x00008000 => MessageType::NetsplitJoin,
             0x00010000 => MessageType::NetsplitQuit,
             0x00020000 => MessageType::Invite,
+            0x00040000 => MessageType::Markerline,
             _ => unimplemented!(),
         }
     }

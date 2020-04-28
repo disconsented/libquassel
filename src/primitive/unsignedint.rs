@@ -7,10 +7,10 @@ use std::vec::Vec;
 
 use failure::Error;
 
-use crate::protocol::error::ProtocolError;
-use crate::protocol::primitive::{deserialize, serialize};
+use crate::error::ProtocolError;
+use crate::{Deserialize, Serialize};
 
-impl serialize::Serialize for bool {
+impl Serialize for bool {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         Ok({
             let i = *self as i8;
@@ -18,7 +18,7 @@ impl serialize::Serialize for bool {
         })
     }
 }
-impl deserialize::Deserialize for bool {
+impl Deserialize for bool {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         if b[0] == 0 {
             return Ok((1, false));
@@ -29,52 +29,52 @@ impl deserialize::Deserialize for bool {
         };
     }
 }
-impl serialize::Serialize for u64 {
+impl Serialize for u64 {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         Ok(Vec::from(self.to_be_bytes()))
     }
 }
 
-impl deserialize::Deserialize for u64 {
+impl Deserialize for u64 {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..8]);
         return Ok((8, rdr.read_u64::<BigEndian>()?));
     }
 }
 
-impl serialize::Serialize for u32 {
+impl Serialize for u32 {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         Ok(Vec::from(self.to_be_bytes()))
     }
 }
 
-impl deserialize::Deserialize for u32 {
+impl Deserialize for u32 {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..4]);
         return Ok((4, rdr.read_u32::<BigEndian>()?));
     }
 }
 
-impl serialize::Serialize for u16 {
+impl Serialize for u16 {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         Ok(Vec::from(self.to_be_bytes()))
     }
 }
 
-impl deserialize::Deserialize for u16 {
+impl Deserialize for u16 {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut rdr = Cursor::new(&b[0..2]);
         return Ok((2, rdr.read_u16::<BigEndian>()?));
     }
 }
 
-impl serialize::Serialize for u8 {
+impl Serialize for u8 {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         Ok(Vec::from(self.to_be_bytes()))
     }
 }
 
-impl deserialize::Deserialize for u8 {
+impl Deserialize for u8 {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         return Ok((1, b[0]));
     }

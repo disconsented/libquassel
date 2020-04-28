@@ -2,18 +2,24 @@ use std::vec::Vec;
 
 use failure::Error;
 
-use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
-use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
-use crate::protocol::primitive::String;
+use crate::{Deserialize, DeserializeUTF8};
+use crate::{Serialize, SerializeUTF8};
 
 extern crate bytes;
 
+/// The BufferInfo struct represents a BufferInfo as received in IRC
+///
+/// BufferInfo is, like all other struct based types, serialized sequentially.
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct BufferInfo {
-    pub id: i32,         // a unique, sequential id for the buffer
-    pub network_id: i32, // NetworkId of the network the buffer belongs to
+    /// a unique, sequential id for the buffer
+    pub id: i32,
+    /// NetworkId of the network the buffer belongs to
+    pub network_id: i32,
+    /// The Type of the Buffer
     pub buffer_type: BufferType,
-    pub name: String, // BufferName as displayed to the user
+    /// BufferName as displayed to the user
+    pub name: String,
 }
 
 impl Serialize for BufferInfo {
@@ -36,7 +42,7 @@ impl Deserialize for BufferInfo {
         let (_, network_id) = i32::parse(&b[4..8])?;
         let (_, buffer_type) = i16::parse(&b[8..10])?;
 
-        // There are 4 additional undocumted Bytes in the BufferInfo
+        // There are 4 additional undocumented Bytes in the BufferInfo
         // so we start at byte 14
         let (size, name) = String::parse_utf8(&b[14..])?;
 
@@ -52,6 +58,7 @@ impl Deserialize for BufferInfo {
     }
 }
 
+/// The Type of the Buffer
 #[repr(i16)]
 #[derive(Copy, Clone, Debug, std::cmp::PartialEq)]
 pub enum BufferType {

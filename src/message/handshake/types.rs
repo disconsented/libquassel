@@ -1,27 +1,17 @@
-use std::collections::HashMap;
 use std::convert::TryInto;
 use std::result::Result;
 use std::vec::Vec;
 
 use failure::Error;
 
-use crate::protocol::error::ProtocolError;
-use crate::protocol::primitive::deserialize::Deserialize;
-use crate::protocol::primitive::serialize::Serialize;
-use crate::protocol::primitive::{String, Variant};
+use crate::error::ProtocolError;
+use crate::primitive::Variant;
+use crate::Deserialize;
+use crate::Serialize;
 use crate::util;
 
-pub trait HandshakeSerialize {
-    fn serialize(&self) -> Result<Vec<u8>, Error>;
-}
-
-pub trait HandshakeDeserialize {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error>
-    where
-        Self: std::marker::Sized;
-}
-
-pub type VariantMap = HashMap<String, Variant>;
+use crate::primitive::VariantMap;
+use crate::{HandshakeDeserialize, HandshakeSerialize};
 
 impl HandshakeSerialize for VariantMap {
     fn serialize<'a>(&'a self) -> Result<Vec<u8>, Error> {

@@ -8,10 +8,14 @@ use failure::Error;
 
 use log::trace;
 
-use crate::protocol::primitive::{deserialize, serialize};
+use crate::{Deserialize, Serialize};
 
+/// StringList are represented as a Vec of Strings
+///
+/// StringLists are serialized as an i32 of the amount of elements and then each element as a String
 pub type StringList = Vec<String>;
-impl serialize::Serialize for StringList {
+
+impl Serialize for StringList {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let len: i32 = self.len().try_into()?;
         let mut res: Vec<u8> = Vec::new();
@@ -25,10 +29,10 @@ impl serialize::Serialize for StringList {
     }
 }
 
-impl deserialize::Deserialize for StringList {
+impl Deserialize for StringList {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
-        trace!(target: "protocol::primitive::StringList", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
+        trace!(target: "primitive::StringList", "Parsing with length: {:?}, from bytes: {:x?}", len, &b[0..4]);
         let mut res: StringList = StringList::new();
 
         let mut pos = 4;

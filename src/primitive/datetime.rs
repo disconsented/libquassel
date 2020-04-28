@@ -1,11 +1,17 @@
-use crate::protocol::primitive::deserialize::Deserialize;
-use crate::protocol::primitive::serialize::Serialize;
+use crate::Deserialize;
+use crate::Serialize;
 
+/// The DateTime struct represents a DateTime as received in IRC
+///
+/// DateTime is, like all other struct based types, serialized sequentially.
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct DateTime {
-    julian_day: i32,    // Day in Julian calendar, unknown if signed or unsigned
-    millis_of_day: i32, // Milliseconds since start of day
-    zone: u8,           // Timezone of DateTime, 0x00 is local, 0x01 is UTC
+    /// Day in Julian calendar, unknown if signed or unsigned
+    julian_day: i32,
+    /// Milliseconds since start of day
+    millis_of_day: i32,
+    /// Timezone of DateTime, 0x00 is local, 0x01 is UTC
+    zone: u8,
 }
 
 impl Serialize for DateTime {
@@ -40,9 +46,13 @@ impl Deserialize for DateTime {
     }
 }
 
+/// The Date struct represents a Date as received in IRC
+///
+/// Date is, like all other struct based types, serialized sequentially.
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct Date {
-    julian_day: i32, // Day in Julian calendar, unknown if signed or unsigned
+    /// Day in Julian calendar, unknown if signed or unsigned
+    julian_day: i32,
 }
 
 impl Serialize for Date {
@@ -66,9 +76,13 @@ impl Deserialize for Date {
     }
 }
 
+/// The Time struct represents a Time as received in IRC
+///
+/// Time is, like all other struct based types, serialized sequentially.
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct Time {
-    millis_of_day: i32, // Milliseconds since start of day
+    /// Milliseconds since start of day
+    millis_of_day: i32,
 }
 
 impl Serialize for Time {

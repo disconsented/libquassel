@@ -4,24 +4,31 @@ use failure::Error;
 
 use log::{error, trace};
 
-use crate::protocol::error::ProtocolError;
-use crate::protocol::primitive;
-use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
-use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
-use crate::protocol::primitive::{String, StringList};
+use crate::error::ProtocolError;
+use crate::primitive;
+use crate::primitive::StringList;
+use crate::{Deserialize, DeserializeUTF8};
+use crate::{Serialize, SerializeUTF8};
 
 extern crate bytes;
-use bytes::BytesMut;
 
-use crate::protocol::primitive::{
+use crate::primitive::{
     BufferInfo, Date, DateTime, Message, Time, VariantList, VariantMap,
 };
 
+/// Variant represents the possible types we can receive
+///
+/// Variant's are serizalized as the Type as a i32 and then the Type in it's own format
+///
+/// BufferInfo and Message are UserTypes
+/// but we represent them as a native Type here.
+///
+/// StringUTF8 is de-/serialized as a C ByteArray.
 #[allow(non_camel_case_types, dead_code)]
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub enum Variant {
     Unknown,
-    UserType(String, BytesMut),
+    UserType(String, Vec<u8>),
     BufferInfo(BufferInfo),
     Message(Message),
     Time(Time),
@@ -31,7 +38,6 @@ pub enum Variant {
     VariantList(VariantList),
     String(String),
     StringUTF8(String),
-    ByteArray(String),
     StringList(StringList),
     bool(bool),
     u64(u64),
@@ -72,12 +78,6 @@ impl Serialize for Variant {
                 res.extend(primitive::QBYTEARRAY.to_be_bytes().iter());
                 res.extend(unknown.to_be_bytes().iter());
                 res.extend(v.serialize_utf8()?.iter());
-            }
-            Variant::ByteArray(v) => {
-                res.extend(primitive::QBYTEARRAY.to_be_bytes().iter());
-                res.extend(unknown.to_be_bytes().iter());
-                res.extend(v.serialize_utf8()?.iter());
-                res.extend(vec![0x00]);
             }
             Variant::StringList(v) => {
                 res.extend(primitive::QSTRINGLIST.to_be_bytes().iter());
@@ -130,9 +130,22 @@ impl Serialize for Variant {
                 res.extend(unknown.to_be_bytes().iter());
                 res.extend(v.to_be_bytes().iter());
             }
-            Variant::UserType(_, _) => unimplemented!(),
-            Variant::BufferInfo(_) => unimplemented!(),
-            Variant::Message(_) => unimplemented!(),
+            Variant::UserType(name, bytes) => {
+                res.extend(primitive::USERTYPE.to_be_bytes().iter());
+                res.extend(unknown.to_be_bytes().iter());
+                res.append(&mut name.serialize_utf8()?);
+                res.extend(bytes);
+            }
+            Variant::BufferInfo(v) => {
+                let bytes = BufferInfo::serialize(v)?;
+                let user = Variant::UserType("BufferInfo".to_string(), bytes);
+                Variant::serialize(&user).unwrap();
+            }
+            Variant::Message(v) => {
+                let bytes = Message::serialize(v)?;
+                let user = Variant::UserType("Message".to_string(), bytes);
+                Variant::serialize(&user).unwrap();
+            }
             Variant::DateTime(v) => {
                 res.extend(primitive::QDATETIME.to_be_bytes().iter());
                 res.extend(unknown.to_be_bytes().iter());
@@ -165,42 +178,42 @@ impl Deserialize for Variant {
         let len = 5;
         match qtype {
             primitive::QVARIANTMAP => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: VariantMap");
+                trace!(target: "primitive::Variant", "Parsing Variant: VariantMap");
                 let (vlen, value) = VariantMap::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::VariantMap(value)));
             }
             primitive::QVARIANTLIST => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: VariantList");
+                trace!(target: "primitive::Variant", "Parsing Variant: VariantList");
                 let (vlen, value) = VariantList::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::VariantList(value)));
             }
             primitive::QSTRING => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: String");
+                trace!(target: "primitive::Variant", "Parsing Variant: String");
                 let (vlen, value) = String::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::String(value.clone())));
             }
             primitive::QBYTEARRAY => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: ByteArray");
+                trace!(target: "primitive::Variant", "Parsing Variant: ByteArray");
                 let (vlen, value) = String::parse_utf8(&b[len..])?;
                 return Ok((len + vlen, Variant::StringUTF8(value.clone())));
             }
             primitive::QSTRINGLIST => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: StringList");
+                trace!(target: "primitive::Variant", "Parsing Variant: StringList");
                 let (vlen, value) = StringList::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::StringList(value.clone())));
             }
             primitive::QDATETIME => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: Date");
+                trace!(target: "primitive::Variant", "Parsing Variant: Date");
                 let (vlen, value) = Date::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::Date(value.clone())));
             }
             primitive::QDATE => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: Date");
+                trace!(target: "primitive::Variant", "Parsing Variant: Date");
                 let (vlen, value) = Date::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::Date(value.clone())));
             }
             primitive::QTIME => {
-                trace!(target: "protocol::primitive::Variant", "Parsing Variant: Time");
+                trace!(target: "primitive::Variant", "Parsing Variant: Time");
                 let (vlen, value) = Time::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::Time(value.clone())));
             }
@@ -241,40 +254,41 @@ impl Deserialize for Variant {
                 return Ok((len + vlen, Variant::i8(value)));
             }
             primitive::USERTYPE => {
-                trace!(target: "protocol::primitive::Variant", "Parsing UserType");
+                trace!(target: "primitive::Variant", "Parsing UserType");
                 // Parse UserType name
                 let (user_type_len, user_type) = String::parse_utf8(&b[len..])?;
 
-                trace!(target: "protocol::primitive::Variant", "Parsing UserType: {:?}", user_type);
+                trace!(target: "primitive::Variant", "Parsing UserType: {:?}", user_type);
 
+                // TODO implement all these types
                 // Match Possible User Types to basic structures
                 match user_type.as_str() {
                     // As VariantMap
                     "IrcUser" | "IrcChannel" | "Identity" | "NetworkInfo" | "Network::Server" => {
-                        trace!(target: "protocol::primitive::Variant", "UserType is VariantMap");
+                        trace!(target: "primitive::Variant", "UserType is VariantMap");
                         let (vlen, value) = VariantMap::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::VariantMap(value)));
                     }
                     // As i32
                     "BufferId" | "IdentityId" | "NetworkId" | "MsgId" => {
-                        trace!(target: "protocol::primitive::Variant", "UserType is i32");
+                        trace!(target: "primitive::Variant", "UserType is i32");
 
                         let (vlen, value) = i32::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::i32(value)));
                     }
                     // As i64
                     "PeerPtr" => {
-                        trace!(target: "protocol::primitive::Variant", "UserType is i64");
+                        trace!(target: "primitive::Variant", "UserType is i64");
                         let (vlen, value) = i64::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::i64(value)));
                     }
                     "BufferInfo" => {
-                        trace!(target: "protocol::primitive::Variant", "UserType is BufferInfo");
+                        trace!(target: "primitive::Variant", "UserType is BufferInfo");
                         let (vlen, value) = BufferInfo::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::BufferInfo(value)));
                     }
                     "Message" => {
-                        trace!(target: "protocol::primitive::Variant", "UserType is Message");
+                        trace!(target: "primitive::Variant", "UserType is Message");
                         let (vlen, value) = Message::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::Message(value)));
                     }

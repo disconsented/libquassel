@@ -1,38 +1,21 @@
-#[macro_export]
-macro_rules! parse_match {
-    ( $matchee:expr, $pos:expr, $map:expr, $bytes:expr, $name:expr, $(($pattern:pat, $type:ty, $variant:expr)),* ) => {
-        match $matchee {
-            $(
-                $pattern => {
-                    let value: $type;
-
-                    $pos = $pos + value.parse(&$bytes[($pos)..]);
-                    $map.insert($name, $variant(value));
-                },
-            )*
-        };
-    };
-}
-
+/// Match a VariantMaps field and return it's contents if successfull
+///
+/// # Example
+///
+/// ```
+/// use libquassel::primitive::{VariantMap, Variant};
+///
+/// let var = Variant::String("test string");
+/// let result = match_variant!(var, Variant::String);
+/// ```
 #[macro_export]
 macro_rules! match_variant {
-    ( $values:expr, $x:path, $field:expr ) => {
-        match &$values[$field] {
-            $x(x) => { Ok(x.clone()) },
-            _ => { Err("") }
-        }.unwrap();
-    }
-}
-
-use crate::protocol::primitive::{Variant};
-use crate::protocol::error::ProtocolError;
-use failure::Error;
-
-pub fn get_msg_type(val: &Variant) -> Result<&str, Error> {
-    match val {
-        Variant::String(x) => return Ok(x),
-        Variant::StringUTF8(x) => return Ok(x),
-        _ => bail!(ProtocolError::WrongVariant)
+    ( $values:expr, $x:path ) => {
+        match &$values {
+            $x(x) => Ok(x.clone()),
+            _ => Err(""),
+        }
+        .unwrap();
     };
 }
 

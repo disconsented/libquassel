@@ -1,5 +1,5 @@
-use crate::protocol::message::handshake::{HandshakeDeserialize, HandshakeSerialize, VariantMap};
-use crate::protocol::primitive::Variant;
+use crate::primitive::{Variant, VariantMap};
+use crate::{HandshakeDeserialize, HandshakeSerialize};
 
 #[test]
 pub fn serialize_variantmap() {

@@ -15,13 +15,13 @@ use tokio_util::codec::Framed;
 use futures_util::stream::StreamExt;
 use futures::SinkExt;
 
-use crate::protocol::frame::QuasselCodec;
+use crate::frame::QuasselCodec;
 
 use failure::Error;
 
 use log::{trace, debug, info, error};
 
-use crate::protocol::message::ConnAck;
+use crate::message::ConnAck;
 
 extern crate log;
 
@@ -39,9 +39,9 @@ pub enum ClientState {
 
 impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
     pub async fn run(&mut self) {
-        use crate::protocol::primitive::StringList;
-        use crate::protocol::message::handshake::ClientInit;
-        use crate::protocol::message::handshake::HandshakeSerialize;
+        use crate::primitive::StringList;
+        use crate::message::ClientInit;
+        use crate::HandshakeSerialize;
 
         info!(target: "init", "Setting Features");
 
@@ -49,6 +49,7 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
         features.push("SynchronizedMarkerLine".to_string());
         features.push("Authenticators".to_string());
         features.push("ExtendedFeatures".to_string());
+        features.push("BufferActivitySync".to_string());
         let client_init = ClientInit {
             client_version:String::from("Rust 0.0.0"),
             client_date: String::from("1579009211"),
@@ -123,15 +124,16 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
 }
 
 pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
-    use crate::protocol::message::ClientLogin;
-    use crate::protocol::message::handshake::{HandshakeSerialize, HandshakeDeserialize, VariantMap};
-    use crate::util::get_msg_type;
+    use crate::{HandshakeSerialize, HandshakeDeserialize};
+    use crate::message::ClientLogin;
+    use crate::primitive::{VariantMap, Variant};
 
     trace!(target: "message", "Received bytes: {:x?}", buf);
     let (_, res) = VariantMap::parse(buf)?;
     debug!(target: "init", "Received Messsage: {:#?}", res);
-    let msgtype = get_msg_type(&res["MsgType"])?;
-    match msgtype {
+
+    let msgtype = match_variant!(&res["MsgType"], Variant::String);
+    match msgtype.as_str() {
         "ClientInitAck" => {
             info!(target: "init", "Initialization successfull");
             info!(target: "login", "Starting Login");
@@ -145,7 +147,6 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
             info!(target: "login", "Login successfull");
         },
         "SessionInit" => {
-            info!(target: "message", "Received SessionInit: {:#?}", res);
             info!(target: "login", "Session Initialization finished. Switching to Connected state");
             client.state = ClientState::Connected;
         }
@@ -156,30 +157,25 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
             error!(target: "client", "Error: WrongMsgType: {:#?}", res);
         }
     }
+
     return Ok(());
 }
 
 pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
-    use crate::protocol::primitive::VariantList;
-    use crate::protocol::primitive::deserialize::Deserialize;
-    use crate::protocol::primitive::serialize::Serialize;
-    use crate::util::get_msg_type;
+    use crate::primitive::VariantList;
+    use crate::Deserialize;
+    use crate::Serialize;
 
     trace!(target: "message", "Received bytes: {:x?}", buf);
     let (_, res) = VariantList::parse(buf)?;
     debug!(target: "init", "Received Messsage: {:#?}", res);
-    // let msgtype = get_msg_type(&res["MsgType"])?;
-    // match msgtype {
-    //     _ => {
-    //         error!(target: "client", "Error: WrongMsgType: {:#?}", res);
-    //     }
-    // }
+
     return Ok(());
 }
 
 // Send the initialization message to the stream
 pub async fn init(stream: &mut TcpStream, tls: bool, compression: bool) -> Result<ConnAck, Error> {
-    use crate::protocol::primitive::deserialize::Deserialize;
+    use crate::Deserialize;
 
     // Buffer for our initialization
     let mut init: Vec<u8> = vec![];

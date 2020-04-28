@@ -1,23 +1,56 @@
 use failure::Error;
 use std::result::Result;
 
-use crate::protocol::error::ProtocolError;
-use crate::protocol::primitive::{String, StringList, Variant, VariantList};
-use crate::util::get_msg_type;
-
+use crate::error::ProtocolError;
+use crate::primitive::{StringList, Variant, VariantList};
 mod types;
-pub use types::{HandshakeDeserialize, HandshakeSerialize, VariantMap};
+use crate::primitive::VariantMap;
+use crate::{HandshakeDeserialize, HandshakeSerialize};
 
 use crate::match_variant;
 
+/// Data received right after initializing the connection
+///
+/// ConnAck is serialized sequentially
 #[derive(Debug)]
 pub struct ConnAck {
+    /// The Flag 0x01 for TLS
+    /// and 0x02 for Deflate Compression
     flags: u8,
+    /// Some extra protocol version specific data
+    /// So far unused
     extra: i16,
+    /// The version of the protocol
+    /// 0x00000001 for the legacy protocol
+    /// 0x00000002 for the datastream protocol
+    ///
+    /// Only the datastream protocol is supported by this crate
     version: i8,
 }
 
-impl crate::protocol::primitive::deserialize::Deserialize for ConnAck {
+impl Default for ConnAck {
+    fn default() -> Self {
+        Self {
+            flags: 0x00,
+            extra: 0x00,
+            version: 0x00000002,
+        }
+    }
+}
+
+impl crate::Serialize for ConnAck {
+    fn serialize(&self) -> Result<Vec<std::primitive::u8>, Error> {
+        let mut bytes: Vec<u8> = Vec::new();
+
+        bytes.append(&mut self.flags.serialize()?);
+        bytes.append(&mut self.extra.serialize()?);
+        bytes.append(&mut self.version.serialize()?);
+
+        Ok(bytes)
+    }
+}
+
+impl crate::Deserialize for ConnAck {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (flen, flags) = u8::parse(b)?;
         let (elen, extra) = i16::parse(&b[flen..])?;
@@ -34,12 +67,44 @@ impl crate::protocol::primitive::deserialize::Deserialize for ConnAck {
     }
 }
 
+/// ClientInit is the Initial message send to the core after establishing a base layer comunication.
+///
+/// Features
+///
+/// | Flag | Name | Description |
+/// | ---- | ---- | ----------- |
+/// | 0x00000001 | SynchronizedMarkerLine | -- |
+/// | 0x00000002 | SaslAuthentication | -- |
+/// | 0x00000004 | SaslExternal | -- |
+/// | 0x00000008 | HideInactiveNetworks | -- |
+/// | 0x00000010 | PasswordChange | -- |
+/// | 0x00000020 | CapNegotiation | IRCv3 capability negotiation, account tracking |
+/// | 0x00000040 | VerifyServerSSL | IRC server SSL validation |
+/// | 0x00000080 | CustomRateLimits | IRC server custom message rate limits |
+/// | 0x00000100 | DccFileTransfer | Currently not supported |
+/// | 0x00000200 | AwayFormatTimestamp | Timestamp formatting in away (e.g. %%hh:mm%%) |
+/// | 0x00000400 | Authenticators | Support for exchangeable auth backends |
+/// | 0x00000800 | BufferActivitySync | Sync buffer activity status |
+/// | 0x00001000 | CoreSideHighlights | Core-Side highlight configuration and matching |
+/// | 0x00002000 | SenderPrefixes | Show prefixes for senders in backlog |
+/// | 0x00004000 | RemoteDisconnect | Supports RPC call disconnectFromCore to remotely disconnect a client |
+/// | 0x00008000 | ExtendedFeatures | Transmit features as list of strings |
+/// | --         | LongTime | Serialize message time as 64-bit |
+/// | --         | RichMessages | Real Name and Avatar URL in backlog |
+/// | --         | BacklogFilterType | Backlogmanager supports filtering backlog by messagetype |
+/// | --         | EcdsaCertfpKeys | ECDSA keys for CertFP in identities |
+/// | --         | LongMessageId | 64-bit IDs for messages |
+/// | --         | SyncedCoreInfo | CoreInfo dynamically updated using signals |
 #[derive(Debug)]
 pub struct ClientInit {
-    pub client_version: String, // Version of the client
-    pub client_date: String,    // Build date of the client
+    /// Version of the client
+    pub client_version: String,
+    /// Build date of the client
+    pub client_date: String,
+    /// supported features as bitflags
     pub client_features: u32,
-    pub feature_list: StringList, // List of supported extended features
+    /// List of supported extended features
+    pub feature_list: StringList,
 }
 
 impl HandshakeSerialize for ClientInit {
@@ -70,16 +135,16 @@ impl HandshakeDeserialize for ClientInit {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientInit" {
             return Ok((
                 len,
                 Self {
-                    client_version: match_variant!(values, Variant::String, "ClientVersion"),
-                    client_date: match_variant!(values, Variant::String, "ClientDate"),
-                    feature_list: match_variant!(values, Variant::StringList, "FeatureList"),
-                    client_features: match_variant!(values, Variant::u32, "Features"),
+                    client_version: match_variant!(values["ClientVersion"], Variant::String),
+                    client_date: match_variant!(values["ClientDate"], Variant::String),
+                    feature_list: match_variant!(values["FeatureList"], Variant::StringList),
+                    client_features: match_variant!(values["Features"], Variant::u32),
                 },
             ));
         } else {
@@ -88,8 +153,10 @@ impl HandshakeDeserialize for ClientInit {
     }
 }
 
+/// ClientInitReject is received when the initialization fails
 #[derive(Debug)]
 pub struct ClientInitReject {
+    /// String with an error message of what went wrong
     pub error_string: String,
 }
 
@@ -112,13 +179,13 @@ impl HandshakeDeserialize for ClientInitReject {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientInitReject" {
             return Ok((
                 len,
                 Self {
-                    error_string: match_variant!(values, Variant::String, "ErrorString"),
+                    error_string: match_variant!(values["ErrorString"], Variant::String),
                 },
             ));
         } else {
@@ -127,13 +194,19 @@ impl HandshakeDeserialize for ClientInitReject {
     }
 }
 
+/// ClientInitAck is received when the initialization was successfull
 #[derive(Debug)]
 pub struct ClientInitAck {
-    pub core_features: u32,            // Flags of supported legacy features
-    pub core_configured: bool,         // If the core has already been configured
-    pub storage_backends: VariantList, // List of VariantMaps of info on available backends
-    pub authenticators: VariantList,   // List of VariantMaps of info on available authenticators
-    pub feature_list: StringList,      // List of supported extended features
+    /// Flags of supported legacy features
+    pub core_features: u32,
+    /// If the core has already been configured
+    pub core_configured: bool,
+    /// List of VariantMaps of info on available backends
+    pub storage_backends: VariantList,
+    /// List of VariantMaps of info on available authenticators
+    pub authenticators: VariantList,
+    /// List of supported extended features
+    pub feature_list: StringList,
 }
 
 impl HandshakeSerialize for ClientInitAck {
@@ -168,21 +241,20 @@ impl HandshakeDeserialize for ClientInitAck {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientInitAck" {
             return Ok((
                 len,
                 Self {
                     core_features: 0x00008000,
-                    core_configured: match_variant!(values, Variant::bool, "Configured"),
+                    core_configured: match_variant!(values["Configured"], Variant::bool),
                     storage_backends: match_variant!(
-                        values,
-                        Variant::VariantList,
-                        "StorageBackends"
+                        values["StorageBackends"],
+                        Variant::VariantList
                     ),
-                    authenticators: match_variant!(values, Variant::VariantList, "Authenticators"),
-                    feature_list: match_variant!(values, Variant::StringList, "FeatureList"),
+                    authenticators: match_variant!(values["Authenticators"], Variant::VariantList),
+                    feature_list: match_variant!(values["FeatureList"], Variant::StringList),
                 },
             ));
         } else {
@@ -191,6 +263,8 @@ impl HandshakeDeserialize for ClientInitAck {
     }
 }
 
+/// Login to the core with user data
+/// username and password are transmitted in plain text
 #[derive(Debug)]
 pub struct ClientLogin {
     pub user: String,
@@ -217,14 +291,14 @@ impl HandshakeDeserialize for ClientLogin {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientLogin" {
             return Ok((
                 len,
                 Self {
-                    user: match_variant!(values, Variant::String, "User"),
-                    password: match_variant!(values, Variant::String, "Password"),
+                    user: match_variant!(values["User"], Variant::String),
+                    password: match_variant!(values["Password"], Variant::String),
                 },
             ));
         } else {
@@ -233,6 +307,8 @@ impl HandshakeDeserialize for ClientLogin {
     }
 }
 
+/// ClientLoginAck is received after the client has successfully logged in
+/// it has no fields
 #[derive(Debug)]
 pub struct ClientLoginAck;
 
@@ -251,7 +327,7 @@ impl HandshakeDeserialize for ClientLoginAck {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientLogin" {
             return Ok((len, Self {}));
@@ -261,6 +337,8 @@ impl HandshakeDeserialize for ClientLoginAck {
     }
 }
 
+/// ClientLoginReject is received after the client failed to login
+/// It contains an error message as String
 #[derive(Debug)]
 pub struct ClientLoginReject {
     error: String,
@@ -285,13 +363,13 @@ impl HandshakeDeserialize for ClientLoginReject {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientLogin" {
             return Ok((
                 len,
                 Self {
-                    error: match_variant!(values, Variant::String, "ErrorString"),
+                    error: match_variant!(values["ErrorString"], Variant::String),
                 },
             ));
         } else {
@@ -300,10 +378,15 @@ impl HandshakeDeserialize for ClientLoginReject {
     }
 }
 
+/// SessionInit is received along with ClientLoginAck to initialize that user Session
+// TODO Replace with proper types
 #[derive(Debug)]
 pub struct SessionInit {
+    /// List of all configured identities
     identities: VariantList,
+    /// List of all existing buffers
     buffers: VariantList,
+    /// Ids of all networks
     network_ids: VariantList,
 }
 
@@ -334,15 +417,15 @@ impl HandshakeDeserialize for SessionInit {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
 
-        let msgtype = get_msg_type(&values["MsgType"])?;
+        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
 
         if msgtype == "ClientLogin" {
             return Ok((
                 len,
                 Self {
-                    identities: match_variant!(values, Variant::VariantList, "Identities"),
-                    buffers: match_variant!(values, Variant::VariantList, "BufferInfos"),
-                    network_ids: match_variant!(values, Variant::VariantList, "NetworkIds"),
+                    identities: match_variant!(values["Identities"], Variant::VariantList),
+                    buffers: match_variant!(values["BufferInfos"], Variant::VariantList),
+                    network_ids: match_variant!(values["NetworkIds"], Variant::VariantList),
                 },
             ));
         } else {

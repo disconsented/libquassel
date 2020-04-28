@@ -1,9 +1,7 @@
-use crate::protocol::primitive::deserialize::Deserialize;
-use crate::protocol::primitive::serialize::Serialize;
+use crate::Deserialize;
+use crate::Serialize;
 
-use crate::protocol::primitive::{
-    BufferInfo, BufferType, Message, Variant, VariantList, VariantMap,
-};
+use crate::primitive::{BufferInfo, BufferType, Message, Variant, VariantList, VariantMap};
 
 #[test]
 pub fn serialize_variant_bool() {
@@ -56,13 +54,13 @@ pub fn serialize_variantmap() {
 #[test]
 pub fn deserialize_variantmap() {
     let test_bytes: &[u8] = &[
-        0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 0, 20, 0, 67, 0, 111, 0, 110, 0, 102, 0, 105, 0, 103, 0,
-        117, 0, 114, 0, 101, 0, 100, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1,
+        0, 0, 0, 1, 0, 0, 0, 20, 0, 67, 0, 111, 0, 110, 0, 102, 0, 105, 0, 103, 0, 117, 0, 114, 0,
+        101, 0, 100, 0, 0, 0, 1, 0, 1,
     ];
     let (len, res) = VariantMap::parse(test_bytes).unwrap();
     let mut test_variantmap = VariantMap::new();
     test_variantmap.insert("Configured".to_string(), Variant::bool(true));
-    assert_eq!(len, 39);
+    assert_eq!(len, 34);
     assert_eq!(res, test_variantmap);
 }
 

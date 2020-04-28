@@ -1,7 +1,7 @@
-use crate::protocol::primitive::deserialize::{Deserialize, DeserializeUTF8};
-use crate::protocol::primitive::serialize::{Serialize, SerializeUTF8};
+use crate::{Deserialize, DeserializeUTF8};
+use crate::{Serialize, SerializeUTF8};
 
-use crate::protocol::primitive::*;
+use crate::primitive::*;
 
 #[test]
 pub fn serialize_string() {

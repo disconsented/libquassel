@@ -20,7 +20,7 @@ use flate2::Decompress;
 use flate2::FlushCompress;
 use flate2::FlushDecompress;
 
-use crate::protocol::frame::QuasselCodec;
+use crate::frame::QuasselCodec;
 
 macro_rules! mock {
     ($($x:expr,)*) => {{
@@ -131,24 +131,23 @@ pub fn read_single_frame_compressed() {
     assert_done!(io);
 }
 
-// TODO shit doens't work for whatever reason
-// #[test]
-// pub fn read_multi_frame_compressed() {
-//     let io = FramedRead::new(
-//         mock! {
-//             data(
-//                 b"\x78\x9c\x63\x60\x60\xe0\x4c\x4c\x4a\x4e\x49\x4d\x4b\xcf\xc8\x04\x00\x11\xec\x03\x97\x78\x9c\x63\x60\x60\x60\x36\x34\x32\x06\x00\x01\x3d\x00\x9a\x78\x9c\x63\x60\x60\xe0\xce\x48\xcd\xc9\xc9\x57\x28\xcf\x2f\xca\x49\x01\x00\x1a\x93\x04\x68",
-//             ),
-//         },
-//         QuasselCodec::builder().compression(true).new_codec(),
-//     );
-//     pin_mut!(io);
-//
-//     assert_next_eq!(io, b"abcdefghi");
-//     assert_next_eq!(io, b"123");
-//     assert_next_eq!(io, b"hello world");
-//     assert_done!(io);
-// }
+#[test]
+pub fn read_multi_frame_compressed() {
+    let io = FramedRead::new(
+        mock! {
+            data(
+                b"\x78\x9c\x63\x60\x60\xe0\x4c\x4c\x4a\x4e\x49\x4d\x4b\xcf\xc8\x04\x00\x11\xec\x03\x97\x78\x9c\x63\x60\x60\x60\x36\x34\x32\x06\x00\x01\x3d\x00\x9a\x78\x9c\x63\x60\x60\xe0\xce\x48\xcd\xc9\xc9\x57\x28\xcf\x2f\xca\x49\x01\x00\x1a\x93\x04\x68",
+            ),
+        },
+        QuasselCodec::builder().compression(true).new_codec(),
+    );
+    pin_mut!(io);
+
+    assert_next_eq!(io, b"abcdefghi");
+    assert_next_eq!(io, b"123");
+    assert_next_eq!(io, b"hello world");
+    assert_done!(io);
+}
 
 // ======================
 // ===== Test utils =====

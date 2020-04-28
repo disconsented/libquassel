@@ -15,13 +15,15 @@ use flate2::Decompress;
 use flate2::FlushCompress;
 use flate2::FlushDecompress;
 
+/// Builder for the QuasselCodec
 #[derive(Debug, Clone, Copy)]
 pub struct Builder {
-    // Maximum frame length
+    /// Enable or Disable Compression
     compression: bool,
+    /// The level of Compression
     compression_level: Compression,
 
-    // Maximum frame length
+    /// Maximum length of the frame
     max_frame_len: usize,
 }
 
@@ -30,6 +32,7 @@ pub struct QuasselCodecError {
     _priv: (),
 }
 
+/// QuasselCodec provides the base layer of frameing and compression
 #[derive(Debug)]
 pub struct QuasselCodec {
     builder: Builder,
@@ -45,7 +48,7 @@ enum DecodeState {
 }
 
 impl QuasselCodec {
-    // Creates a new quassel codec with default values
+    /// Creates a new quassel codec with default values
     pub fn new() -> Self {
         Self {
             builder: Builder::new(),
@@ -61,6 +64,7 @@ impl QuasselCodec {
         Builder::new()
     }
 
+    /// Gets the maximum frame length
     pub fn max_frame_length(&self) -> usize {
         self.builder.max_frame_len
     }
@@ -71,6 +75,11 @@ impl QuasselCodec {
 
     pub fn compression_level(&self) -> Compression {
         self.builder.compression_level
+    }
+
+    /// Gets the maximum frame length
+    pub fn set_max_frame_length(&mut self, val: usize) {
+        self.builder.max_frame_length(val);
     }
 
     pub fn set_compression(&mut self, val: bool) {
@@ -213,9 +222,12 @@ impl Encoder for QuasselCodec {
 
         if self.builder.compression {
             let mut cbuf: Vec<u8> = vec![0; 4 + n];
+
             let before_in = self.comp.total_in();
             let before_out = self.comp.total_out();
+
             self.comp.compress(buf, &mut cbuf, FlushCompress::Full)?;
+
             let after_in = self.comp.total_in();
             let after_out = self.comp.total_out();
 
@@ -238,14 +250,14 @@ impl Default for QuasselCodec {
 // ===== impl Builder =====
 
 impl Builder {
-    /// Creates a new length delimited codec builder with default configuration
+    /// Creates a new codec builder with default configuration
     /// values.
     ///
     /// # Examples
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use libquassel::protocol::frame::QuasselCodec;
+    /// use libquassel::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
@@ -261,11 +273,13 @@ impl Builder {
         }
     }
 
+    /// Enables or disables the compression
     pub fn compression(&mut self, val: bool) -> &mut Self {
         self.compression = val;
         self
     }
 
+    /// Sets the level of compression to
     pub fn compression_level(&mut self, val: Compression) -> &mut Self {
         self.compression_level = val;
         self
@@ -274,7 +288,7 @@ impl Builder {
     /// Sets the max frame length
     ///
     /// This configuration option applies to both encoding and decoding. The
-    /// default value is 8MB.
+    /// default value is 67MB.
     ///
     /// When decoding, the length field read from the byte stream is checked
     /// against this setting **before** any adjustments are applied. When
@@ -288,7 +302,7 @@ impl Builder {
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use libquassel::protocol::frame::QuasselCodec;
+    /// use libquassel::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
@@ -302,12 +316,12 @@ impl Builder {
         self
     }
 
-    /// Create a configured length delimited `QuasselCodec`
+    /// Create a configured `QuasselCodec`
     ///
     /// # Examples
     ///
     /// ```
-    /// use libquassel::protocol::frame::QuasselCodec;
+    /// use libquassel::frame::QuasselCodec;
     /// # pub fn main() {
     /// QuasselCodec::builder()
     ///     .new_codec();
@@ -322,13 +336,13 @@ impl Builder {
         }
     }
 
-    /// Create a configured length delimited `FramedRead`
+    /// Create a configured `FramedRead`
     ///
     /// # Examples
     ///
     /// ```
     /// # use tokio::io::AsyncRead;
-    /// use libquassel::protocol::frame::QuasselCodec;
+    /// use libquassel::frame::QuasselCodec;
     ///
     /// # fn bind_read<T: AsyncRead>(io: T) {
     /// QuasselCodec::builder()
@@ -343,13 +357,13 @@ impl Builder {
         FramedRead::new(upstream, self.new_codec())
     }
 
-    /// Create a configured length delimited `FramedWrite`
+    /// Create a configured `FramedWrite`
     ///
     /// # Examples
     ///
     /// ```
     /// # use tokio::io::AsyncWrite;
-    /// # use libquassel::protocol::frame::QuasselCodec;
+    /// # use libquassel::frame::QuasselCodec;
     /// # fn write_frame<T: AsyncWrite>(io: T) {
     /// QuasselCodec::builder()
     ///     .new_write(io);
@@ -363,13 +377,13 @@ impl Builder {
         FramedWrite::new(inner, self.new_codec())
     }
 
-    /// Create a configured length delimited `Framed`
+    /// Create a configured `Framed`
     ///
     /// # Examples
     ///
     /// ```
     /// # use tokio::io::{AsyncRead, AsyncWrite};
-    /// # use libquassel::protocol::frame::QuasselCodec;
+    /// # use libquassel::frame::QuasselCodec;
     /// # fn write_frame<T: AsyncRead + AsyncWrite>(io: T) {
     /// # let _ =
     /// QuasselCodec::builder()

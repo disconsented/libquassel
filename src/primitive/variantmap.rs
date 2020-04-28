@@ -5,16 +5,17 @@ use failure::Error;
 
 use log::trace;
 
-use crate::protocol::error::ProtocolError;
-use crate::protocol::primitive::deserialize::Deserialize;
-use crate::protocol::primitive::serialize::Serialize;
-use crate::protocol::primitive::String;
+use crate::Deserialize;
+use crate::Serialize;
 
-use crate::protocol::primitive::Variant;
+use crate::primitive::Variant;
 use crate::util;
 
 extern crate bytes;
 
+/// VariantMaps are represented as a HashMap with String as key and Variant as value
+///
+/// They are serialized as the amount of keys as an i32 then for each entry a String and a Variant.
 pub type VariantMap = HashMap<String, Variant>;
 
 impl Serialize for VariantMap {
@@ -36,25 +37,19 @@ impl Serialize for VariantMap {
 impl Deserialize for VariantMap {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (_, len) = i32::parse(&b[0..4])?;
-        trace!(target: "protocol::primitive::VariantMap", "Parsing VariantMap with {:?} elements", len);
+        trace!(target: "primitive::VariantMap", "Parsing VariantMap with {:?} elements", len);
 
         let mut pos: usize = 4;
         let mut map = VariantMap::new();
         for _ in 0..len {
-            trace!(target: "protocol::primitive::VariantMap", "Parsing entry name");
-            // let (nlen, name) = Variant::parse(&b[pos..])?;
+            trace!(target: "primitive::VariantMap", "Parsing entry name");
             let (nlen, name) = String::parse(&b[pos..])?;
             pos += nlen;
 
-            trace!(target: "protocol::primitive::VariantMap", "Parsing entry: {:?} with len {:?}", name, &b[(pos)..(pos + 4)]);
+            trace!(target: "primitive::VariantMap", "Parsing entry: {:?} with len {:?}", name, &b[(pos)..(pos + 4)]);
             let (vlen, value) = Variant::parse(&b[(pos)..])?;
             pos += vlen;
 
-            // match name {
-            //     Variant::String(x) => map.insert(x, value),
-            //     Variant::StringUTF8(x) => map.insert(x, value),
-            //     _ => bail!(ProtocolError::WrongVariant),
-            // };
             map.insert(name, value);
         }
 
