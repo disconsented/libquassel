@@ -19,6 +19,7 @@ macro_rules! match_variant {
     };
 }
 
+/// Prepend the length of `buf` to `buf`
 pub fn prepend_byte_len(buf: &mut Vec<u8>) {
     use std::convert::TryInto;
     let len: i32 = buf.len().try_into().unwrap();
@@ -29,6 +30,7 @@ pub fn prepend_byte_len(buf: &mut Vec<u8>) {
     buf.insert(0, ulen[0]);
 }
 
+/// Insert a bytes `input` into `buf` at position `pos`
 pub fn insert_bytes(pos: usize, buf: &mut Vec<u8>, input: &mut [u8]) {
     input.reverse();
     for i in input {

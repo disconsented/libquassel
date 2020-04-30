@@ -137,7 +137,7 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
         "ClientInitAck" => {
             info!(target: "init", "Initialization successfull");
             info!(target: "login", "Starting Login");
-            let login = ClientLogin {user: "audron".to_string(), password: "***REMOVED***".to_string()};
+            let login = ClientLogin {user: "audron".to_string(), password: "audron".to_string()};
             client.stream.send(login.serialize()?).await?;
         },
         "ClientInitReject" => {
