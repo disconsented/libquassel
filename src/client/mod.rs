@@ -30,6 +30,12 @@ pub struct Client<T: AsyncRead + AsyncWrite + Unpin> {
     pub tls: bool,
     pub compression: bool,
     pub state: ClientState,
+    pub user: User,
+}
+
+pub struct User {
+    pub name: String,
+    pub password: String,
 }
 
 pub enum ClientState {
@@ -69,7 +75,7 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
         };
     }
 
-    pub async fn connect(address: &'static str, port: u64, compression: bool) -> Result<Client<TcpStream>, Error> {
+    pub async fn connect(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TcpStream>, Error> {
         let mut stream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -90,10 +96,11 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             tls: false,
             compression,
             state: ClientState::Handshake,
+            user,
         });
     }
 
-    pub async fn connect_tls(address: &'static str, port: u64, compression: bool) -> Result<Client<TlsStream<TcpStream>>, Error> {
+    pub async fn connect_tls(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TlsStream<TcpStream>>, Error> {
         let mut stream: TcpStream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -118,6 +125,7 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             tls: true,
             compression,
             state: ClientState::Handshake,
+            user,
         });
     }
 
@@ -137,7 +145,7 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
         "ClientInitAck" => {
             info!(target: "init", "Initialization successfull");
             info!(target: "login", "Starting Login");
-            let login = ClientLogin {user: "audron".to_string(), password: "audron".to_string()};
+            let login = ClientLogin {user: client.user.name.clone(), password: client.user.password.clone()};
             client.stream.send(login.serialize()?).await?;
         },
         "ClientInitReject" => {
@@ -162,12 +170,13 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
 }
 
 pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
+    use crate::message::Message;
     use crate::primitive::VariantList;
     use crate::Deserialize;
     use crate::Serialize;
 
     trace!(target: "message", "Received bytes: {:x?}", buf);
-    let (_, res) = VariantList::parse(buf)?;
+    let (_, res) = Message::parse(buf)?;
     debug!(target: "init", "Received Messsage: {:#?}", res);
 
     return Ok(());

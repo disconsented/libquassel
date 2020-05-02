@@ -12,9 +12,7 @@ use crate::{Serialize, SerializeUTF8};
 
 extern crate bytes;
 
-use crate::primitive::{
-    BufferInfo, Date, DateTime, Message, Time, VariantList, VariantMap,
-};
+use crate::primitive::{BufferInfo, Date, DateTime, Message, Time, VariantList, VariantMap};
 
 /// Variant represents the possible types we can receive
 ///
@@ -204,17 +202,18 @@ impl Deserialize for Variant {
             }
             primitive::QDATETIME => {
                 trace!(target: "primitive::Variant", "Parsing Variant: Date");
-                let (vlen, value) = Date::parse(&b[len..])?;
-                return Ok((len + vlen, Variant::Date(value.clone())));
+                //                let (vlen, value) = DateTime::parse(&b[len..])?;
+                let (vlen, value): (usize, DateTime) = Deserialize::parse(&b[len..])?;
+                return Ok((len + vlen, Variant::DateTime(value.clone())));
             }
             primitive::QDATE => {
                 trace!(target: "primitive::Variant", "Parsing Variant: Date");
-                let (vlen, value) = Date::parse(&b[len..])?;
+                let (vlen, value): (usize, Date) = Deserialize::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::Date(value.clone())));
             }
             primitive::QTIME => {
                 trace!(target: "primitive::Variant", "Parsing Variant: Time");
-                let (vlen, value) = Time::parse(&b[len..])?;
+                let (vlen, value): (usize, Time) = Deserialize::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::Time(value.clone())));
             }
             primitive::BOOL => {

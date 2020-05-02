@@ -3,9 +3,10 @@
 /// # Example
 ///
 /// ```
+/// use libquassel::match_variant;
 /// use libquassel::primitive::{VariantMap, Variant};
 ///
-/// let var = Variant::String("test string");
+/// let var = Variant::String("test string".to_string());
 /// let result = match_variant!(var, Variant::String);
 /// ```
 #[macro_export]
@@ -13,7 +14,7 @@ macro_rules! match_variant {
     ( $values:expr, $x:path ) => {
         match &$values {
             $x(x) => Ok(x.clone()),
-            _ => Err(""),
+            err => Err(err),
         }
         .unwrap();
     };

@@ -16,10 +16,18 @@ async fn main() -> Result<(), Error> {
 //        true,
 //    ).await.unwrap();
 
+    let username = std::env::args().nth(1).expect("no username given");
+    let password = std::env::args().nth(2).expect("no password given");
+
+
     let mut client = client::Client::<tokio_tls::TlsStream<tokio::net::TcpStream>>::connect_tls(
         "cocaine.farm",
         4242,
         true,
+        client::User {
+            name: username,
+            password: password,
+        }
     ).await.unwrap();
 
     client.run().await;
