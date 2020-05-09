@@ -14,6 +14,7 @@ use tokio_tls::TlsStream;
 use tokio_util::codec::Framed;
 use futures_util::stream::StreamExt;
 use futures::SinkExt;
+use std::future::Future;
 
 use crate::frame::QuasselCodec;
 
@@ -21,16 +22,22 @@ use failure::Error;
 
 use log::{trace, debug, info, error};
 
-use crate::message::ConnAck;
+use crate::message::*;
+use crate::primitive::*;
 
 extern crate log;
 
-pub struct Client<T: AsyncRead + AsyncWrite + Unpin> {
-    stream: Framed<T, QuasselCodec>,
+pub struct Client<T, F>
+where
+    F: Future,
+    T: 'static + AsyncRead + AsyncWrite + Unpin,
+{
+    pub stream: Framed<T, QuasselCodec>,
     pub tls: bool,
     pub compression: bool,
     pub state: ClientState,
     pub user: User,
+    pub funcs: Funcs<T, F>,
 }
 
 pub struct User {
@@ -43,7 +50,7 @@ pub enum ClientState {
     Connected,
 }
 
-impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
+impl <T: AsyncRead + AsyncWrite + Unpin, F: Future> Client<T, F> {
     pub async fn run(&mut self) {
         use crate::primitive::StringList;
         use crate::message::ClientInit;
@@ -75,7 +82,13 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
         };
     }
 
-    pub async fn connect(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TcpStream>, Error> {
+    pub async fn connect(
+        address: &'static str,
+        port: u64,
+        compression: bool,
+        user: User,
+        funcs: Funcs<TcpStream, impl Future>
+    ) -> Result<Client<TcpStream, impl Future>, Error> {
         let mut stream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -97,10 +110,17 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             compression,
             state: ClientState::Handshake,
             user,
+            funcs,
         });
     }
 
-    pub async fn connect_tls(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TlsStream<TcpStream>>, Error> {
+    pub async fn connect_tls(
+        address: &'static str,
+        port: u64,
+        compression: bool,
+        user: User,
+        funcs: Funcs<TlsStream<TcpStream>, impl Future>
+    ) -> Result<Client<TlsStream<TcpStream>, impl Future>, Error> {
         let mut stream: TcpStream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -126,12 +146,13 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             compression,
             state: ClientState::Handshake,
             user,
+            funcs,
         });
     }
 
 }
 
-pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
+pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin, F: Future>(client: &mut Client<T, F>, buf: &[u8]) -> Result<(), Error> {
     use crate::{HandshakeSerialize, HandshakeDeserialize};
     use crate::message::ClientLogin;
     use crate::primitive::{VariantMap, Variant};
@@ -169,7 +190,7 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
     return Ok(());
 }
 
-pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
+pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin, F: Future>(client: &mut Client<T, F>, buf: &[u8]) -> Result<(), Error> {
     use crate::message::Message;
     use crate::primitive::VariantList;
     use crate::Deserialize;
@@ -179,7 +200,50 @@ pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Clie
     let (_, res) = Message::parse(buf)?;
     debug!(target: "init", "Received Messsage: {:#?}", res);
 
+    match res {
+        Message::SyncMessage(_) => {}
+        Message::RpcCall(_) => {}
+        Message::InitRequest(_) => {}
+        Message::InitData(_) => {}
+        Message::HeartBeat(_) => {}
+        Message::HeartBeatReply(_) => {}
+    }
+
     return Ok(());
+}
+
+pub struct Funcs<T, F>
+where
+    T: 'static + AsyncRead + AsyncWrite + Unpin,
+    F: std::future::Future,
+{
+    pub init: InitFuncs<T, F>,
+    pub message: MessageFuncs<T, F>,
+}
+
+pub struct InitFuncs<T, F>
+where
+    T: 'static + AsyncRead + AsyncWrite + Unpin,
+    F: std::future::Future,
+{
+   pub client_init_ack: fn(&mut Client<T, F>, VariantMap) -> F,
+   pub client_init_reject: fn(Client<T, F>, VariantMap) -> F,
+   pub client_login_ack: fn(Client<T, F>, VariantMap) -> F,
+   pub client_login_reject: fn(Client<T, F>, VariantMap) -> F,
+   pub session_init: fn(&mut Client<T, F>, VariantMap) -> F,
+}
+
+pub struct MessageFuncs<T, F>
+where
+    T: 'static + AsyncRead + AsyncWrite + Unpin,
+    F: std::future::Future,
+{
+    pub sync_message: fn(Client<T, F>, SyncMessage) -> F,
+    pub rpc_call: fn(Client<T, F>, RpcCall) -> F,
+    pub init_request: fn(Client<T, F>, InitRequest) -> F,
+    pub init_data: fn(Client<T, F>, InitData) -> F,
+    pub heart_beat: fn(Client<T, F>, HeartBeat) -> F,
+    pub heart_beat_reply: fn(Client<T, F>, HeartBeatReply) -> F,
 }
 
 // Send the initialization message to the stream
