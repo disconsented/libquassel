@@ -3,6 +3,7 @@ use crate::{Deserialize, Serialize};
 mod heartbeat;
 mod initdata;
 mod initrequest;
+mod objects;
 mod rpccall;
 mod syncmessage;
 
@@ -25,6 +26,19 @@ pub enum Message {
     /// Bidirectional
     HeartBeatReply(HeartBeatReply),
 }
+
+// impl Message {
+//     fn act(&self) {
+//         match &self {
+//             Message::SyncMessage(value) => value.serialize(),
+//             Message::RpcCall(value) => value.serialize(),
+//             Message::InitRequest(value) => value.serialize(),
+//             Message::InitData(value) => value.serialize(),
+//             Message::HeartBeat(value) => value.serialize(),
+//             Message::HeartBeatReply(value) => value.serialize(),
+//         }
+//     }
+// }
 
 impl Serialize for Message {
     fn serialize(&self) -> Result<Vec<std::primitive::u8>, failure::Error> {

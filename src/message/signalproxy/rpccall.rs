@@ -1,21 +1,36 @@
 use crate::message::MessageType;
+use crate::primitive::Message;
 use crate::primitive::{Variant, VariantList};
 use crate::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
-pub struct RpcCall {
-    slot_name: String,
-    params: VariantList,
+pub enum RpcCall {
+    DisplayMessage(DisplayMessage),
 }
+
+#[derive(Clone, Debug, std::cmp::PartialEq)]
+pub struct DisplayMessage {
+    pub message: Message,
+}
+
+// #[derive(Clone, Debug, std::cmp::PartialEq)]
+// pub struct RpcCall {
+//     pub slot_name: String,
+//     pub params: VariantList,
+// }
 
 impl Serialize for RpcCall {
     fn serialize(&self) -> Result<Vec<std::primitive::u8>, failure::Error> {
         let mut res = VariantList::new();
 
         res.push(Variant::i32(MessageType::RpcCall as i32));
-        res.push(Variant::StringUTF8(self.slot_name.clone()));
 
-        res.append(&mut self.params.clone());
+        match self {
+            RpcCall::DisplayMessage(msg) => {
+                res.push(Variant::StringUTF8("2displayMsg(Message)".to_string()));
+                res.push(Variant::Message(msg.message.clone()));
+            }
+        }
 
         res.serialize()
     }
@@ -27,12 +42,18 @@ impl Deserialize for RpcCall {
 
         res.remove(0);
 
-        Ok((
-            size,
-            Self {
-                slot_name: match_variant!(res.remove(0), Variant::StringUTF8),
-                params: res,
-            },
-        ))
+        let rpc = match_variant!(res.remove(0), Variant::StringUTF8);
+
+        match rpc.as_str() {
+            "2displayMsg(Message)" => {
+                return Ok((
+                    size,
+                    RpcCall::DisplayMessage(DisplayMessage {
+                        message: match_variant!(res.remove(0), Variant::Message),
+                    }),
+                ))
+            }
+            _ => unimplemented!(),
+        }
     }
 }

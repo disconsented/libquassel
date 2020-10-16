@@ -13,6 +13,8 @@ extern crate failure;
 pub mod message;
 pub mod primitive;
 
+pub mod session;
+
 #[allow(dead_code)]
 pub mod error;
 

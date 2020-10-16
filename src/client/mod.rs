@@ -31,6 +31,11 @@ pub struct Client<T: AsyncRead + AsyncWrite + Unpin> {
     pub compression: bool,
     pub state: ClientState,
     pub user: User,
+    pub funcs: Funcs,
+}
+
+pub struct Funcs {
+    pub rpc_call: crate::message::RpcCallClient,
 }
 
 pub struct User {
@@ -75,7 +80,7 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
         };
     }
 
-    pub async fn connect(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TcpStream>, Error> {
+    pub async fn connect(address: &'static str, port: u64, compression: bool, user: User, funcs: Funcs) -> Result<Client<TcpStream>, Error> {
         let mut stream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -97,10 +102,11 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             compression,
             state: ClientState::Handshake,
             user,
+            funcs,
         });
     }
 
-    pub async fn connect_tls(address: &'static str, port: u64, compression: bool, user: User) -> Result<Client<TlsStream<TcpStream>>, Error> {
+    pub async fn connect_tls(address: &'static str, port: u64, compression: bool, user: User, funcs: Funcs) -> Result<Client<TlsStream<TcpStream>>, Error> {
         let mut stream: TcpStream = TcpStream::connect(format!("{}:{}", address, port)).await?;
 
         info!(target: "init", "Establishing Connection");
@@ -126,6 +132,7 @@ impl <T: AsyncRead + AsyncWrite + Unpin> Client<T> {
             compression,
             state: ClientState::Handshake,
             user,
+            funcs,
         });
     }
 
@@ -171,13 +178,30 @@ pub async fn handle_login_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mu
 
 pub async fn handle_message<T: AsyncRead + AsyncWrite + Unpin>(client: &mut Client<T>, buf: &[u8]) -> Result<(), Error> {
     use crate::message::Message;
-    use crate::primitive::VariantList;
+    use crate::primitive::{VariantList, Variant};
     use crate::Deserialize;
     use crate::Serialize;
 
     trace!(target: "message", "Received bytes: {:x?}", buf);
     let (_, res) = Message::parse(buf)?;
     debug!(target: "init", "Received Messsage: {:#?}", res);
+
+    match res {
+        Message::SyncMessage(_) => {}
+        Message::RpcCall(msg) => {
+            match msg.slot_name.as_str() {
+                "2displayMsg(Message)" => {
+                    (client.funcs.rpc_call.display_message)(match_variant!(msg.params[0], Variant::Message));
+                },
+                _ => {},
+            }
+
+        }
+        Message::InitRequest(_) => {}
+        Message::InitData(_) => {}
+        Message::HeartBeat(_) => {}
+        Message::HeartBeatReply(_) => {}
+    }
 
     return Ok(());
 }

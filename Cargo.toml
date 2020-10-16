@@ -39,7 +39,3 @@ flate2 = { version = "1.0", features = ["tokio"] }
 tokio = { version = "0.2", features = ["full"] }
 tokio-util = { version = "0.2", features = ["codec"] }
 tokio-test = { version = "0.2" }
-
-[[bin]]
-name = "quassel-client"
-required-features = ["client"]

@@ -10,6 +10,8 @@ pub struct SyncMessage {
     params: VariantList,
 }
 
+// impl Act for SyncMessage {}
+
 impl Serialize for SyncMessage {
     fn serialize(&self) -> Result<Vec<std::primitive::u8>, failure::Error> {
         let mut res = VariantList::new();
