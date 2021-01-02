@@ -6,7 +6,7 @@ use failure::Error;
 
 /// ClientLoginAck is received after the client has successfully logged in
 /// it has no fields
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientLoginAck;
 
 impl HandshakeSerialize for ClientLoginAck {

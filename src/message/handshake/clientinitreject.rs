@@ -1,14 +1,13 @@
-use crate::error::ProtocolError;
 use crate::primitive::{Variant, VariantMap};
-use crate::{HandshakeDeserialize, HandshakeSerialize};
+use crate::HandshakeSerialize;
 
 use failure::Error;
 
 /// ClientInitReject is received when the initialization fails
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientInitReject {
     /// String with an error message of what went wrong
-    pub error_string: String,
+    pub error: String,
 }
 
 impl HandshakeSerialize for ClientInitReject {
@@ -20,27 +19,16 @@ impl HandshakeSerialize for ClientInitReject {
         );
         values.insert(
             "ErrorString".to_string(),
-            Variant::String(self.error_string.clone()),
+            Variant::String(self.error.clone()),
         );
         return HandshakeSerialize::serialize(&values);
     }
 }
 
-impl HandshakeDeserialize for ClientInitReject {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
-        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
-
-        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
-
-        if msgtype == "ClientInitReject" {
-            return Ok((
-                len,
-                Self {
-                    error_string: match_variant!(values["ErrorString"], Variant::String),
-                },
-            ));
-        } else {
-            bail!(ProtocolError::WrongMsgType);
+impl From<VariantMap> for ClientInitReject {
+    fn from(input: VariantMap) -> Self {
+        ClientInitReject {
+            error: match_variant!(input.get("ErrorString").unwrap(), Variant::String),
         }
     }
 }

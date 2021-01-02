@@ -79,7 +79,7 @@ impl Deserialize for OffsetDateTime {
         let offset: UtcOffset;
         match zone {
             TimeSpec::LocalUnknown | TimeSpec::LocalStandard | TimeSpec::LocalDST => {
-                offset = UtcOffset::current_local_offset()
+                offset = UtcOffset::try_current_local_offset()?
             }
             TimeSpec::UTC => offset = UtcOffset::UTC,
             TimeSpec::OffsetFromUTC => {

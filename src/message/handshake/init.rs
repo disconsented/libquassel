@@ -37,7 +37,15 @@ impl Init {
             handshake |= 0x02;
         }
 
-        return handshake.serialize().unwrap();
+        // Select Protocol 2: Datastream
+
+        let mut init: Vec<u8> = vec![];
+
+        // Add handshake and protocol to our buffer
+        init.extend(handshake.serialize().unwrap());
+        init.extend(crate::message::Protocol::Datastream.serialize());
+
+        return init;
     }
 
     pub fn parse(buf: &[u8]) -> Self {
