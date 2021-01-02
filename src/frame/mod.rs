@@ -195,8 +195,7 @@ impl Decoder for QuasselCodec {
     }
 }
 
-impl Encoder for QuasselCodec {
-    type Item = Vec<u8>;
+impl Encoder<Vec<u8>> for QuasselCodec {
     type Error = io::Error;
 
     fn encode(&mut self, data: Vec<u8>, dst: &mut BytesMut) -> Result<(), io::Error> {
