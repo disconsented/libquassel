@@ -3,7 +3,7 @@ use crate::{Deserialize, Serialize};
 mod heartbeat;
 mod initdata;
 mod initrequest;
-mod objects;
+pub mod objects;
 mod rpccall;
 mod syncmessage;
 

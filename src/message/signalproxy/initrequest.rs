@@ -4,8 +4,8 @@ use crate::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct InitRequest {
-    class_name: String,
-    object_name: String,
+    pub class_name: String,
+    pub object_name: String,
 }
 
 impl Serialize for InitRequest {
@@ -13,8 +13,8 @@ impl Serialize for InitRequest {
         let mut res = VariantList::new();
 
         res.push(Variant::i32(MessageType::InitRequest as i32));
-        res.push(Variant::StringUTF8(self.class_name.clone()));
-        res.push(Variant::StringUTF8(self.object_name.clone()));
+        res.push(Variant::ByteArray(self.class_name.clone()));
+        res.push(Variant::ByteArray(self.object_name.clone()));
 
         res.serialize()
     }
