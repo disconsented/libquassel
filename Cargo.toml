@@ -30,6 +30,19 @@ futures = { version = "0.3", optional = true }
 [features]
 framing = ["tokio", "tokio-util", "flate2"]
 
+# Enable all the quassel features
+all-quassel-features = ["long-message-id", "long-time", "rich-messages", "sender-prefixes"]
+
+# Serialize message IDs as i64
+long-message-id = []
+# Serialize Message Time as i64
+long-time = []
+# Add avatar url and real name to messages
+rich-messages = []
+# Show prefixes for senders in backlog
+sender-prefixes = []
+
+
 default = []
 
 [package.metadata.docs.rs]

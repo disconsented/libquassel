@@ -15,9 +15,20 @@ extern crate bytes;
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct Message {
     /// The unique, sequential id for the message
+    /// i32 by default i64 if long-message-id features is enabled
+    #[cfg(feature = "long-message-id")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "long-message-id")))]
+    pub msg_id: i64,
+    #[cfg(not(feature = "long-message-id"))]
+    #[cfg_attr(docsrs, doc(cfg(not(feature = "long-message-id"))))]
     pub msg_id: i32,
-    /// The timestamp of the message in UNIX time (32-bit, seconds, 64-bit if LONGMESSAGE feature enabled)
+    /// The timestamp of the message in UNIX time (32-bit, seconds, 64-bit if long-time feature enabled)
+    #[cfg(feature = "long-time")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "long-time")))]
     pub timestamp: i64,
+    #[cfg(not(feature = "long-time"))]
+    #[cfg_attr(docsrs, doc(cfg(not(feature = "long-time"))))]
+    pub timestamp: i32,
     /// The message type as it's own type serialized as i32
     pub msg_type: MessageType,
     /// The flags
@@ -27,14 +38,17 @@ pub struct Message {
     /// The sender as nick!ident@host
     pub sender: String,
     /// The prefix modes of the sender.
-    /// Only Some when the SenderPrefix features is enabled
-    pub sender_prefixes: Option<String>,
+    #[cfg(feature = "sender-prefixes")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sender-prefixes")))]
+    pub sender_prefixes: String,
     /// The realName of the sender
-    /// Only Some when the RichMessage features is enabled
-    pub real_name: Option<String>,
+    #[cfg(feature = "rich-messages")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rich-messages")))]
+    pub real_name: String,
     /// The avatarUrl of the sender, if available
-    /// Only Some when the RichMessage features is enabled
-    pub avatar_url: Option<String>,
+    #[cfg(feature = "rich-messages")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rich-messages")))]
+    pub avatar_url: String,
     /// The message content, already stripped from CTCP formatting, but containing mIRC format codes
     pub content: String,
 }
@@ -43,35 +57,28 @@ impl Serialize for Message {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut values: Vec<u8> = Vec::new();
 
+        #[cfg(feature = "long-message-id")]
+        values.append(&mut i64::serialize(&self.msg_id)?);
+        #[cfg(not(feature = "long-message-id"))]
         values.append(&mut i32::serialize(&self.msg_id)?);
 
-        // TODO LONGMESSAGE feature
-        if false {
-            values.append(&mut i64::serialize(&self.timestamp)?);
-        } else {
-            values.append(&mut i32::serialize(&(self.timestamp as i32))?);
-        }
+        #[cfg(feature = "long-time")]
+        values.append(&mut i64::serialize(&self.timestamp)?);
+        #[cfg(not(feature = "long-time"))]
+        values.append(&mut i32::serialize(&(self.timestamp as i32))?);
 
         values.append(&mut i32::serialize(&(self.msg_type as i32))?);
         values.append(&mut i8::serialize(&(self.flags as i8))?);
         values.append(&mut BufferInfo::serialize(&self.buffer)?);
         values.append(&mut String::serialize_utf8(&self.sender)?);
 
-        // TODO SenderPrefixes feature
-        if false {
-            if let Some(x) = &self.sender_prefixes {
-                values.append(&mut String::serialize_utf8(&x)?);
-            }
-        }
+        #[cfg(feature = "sender-prefixes")]
+        values.append(&mut String::serialize_utf8(&self.sender_prefixes)?);
 
-        // TODO RichMessages feature
-        if false {
-            if let Some(x) = &self.real_name {
-                values.append(&mut String::serialize_utf8(&x)?);
-            }
-            if let Some(x) = &self.avatar_url {
-                values.append(&mut String::serialize_utf8(&x)?);
-            }
+        #[cfg(feature = "rich-messages")]
+        {
+            values.append(&mut String::serialize_utf8(&self.real_name)?);
+            values.append(&mut String::serialize_utf8(&self.avatar_url)?);
         }
 
         values.append(&mut String::serialize_utf8(&self.content)?);
@@ -83,19 +90,27 @@ impl Serialize for Message {
 impl Deserialize for Message {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let mut pos = 0;
+        #[cfg(feature = "long-message-id")]
+        let (parsed, msg_id) = i64::parse(&b[pos..])?;
+        #[cfg(not(feature = "long-message-id"))]
         let (parsed, msg_id) = i32::parse(&b[pos..])?;
         pos += parsed;
 
         // TODO LONGMESSAGES feature
         let timestamp;
-        if false {
+
+        #[cfg(feature = "long-time")]
+        {
             let (parsed, temp_timestamp) = i64::parse(&b[pos..])?;
             pos += parsed;
             timestamp = temp_timestamp;
-        } else {
+        }
+
+        #[cfg(not(feature = "long-time"))]
+        {
             let (parsed, temp_timestamp) = i32::parse(&b[pos..])?;
             pos += parsed;
-            timestamp = temp_timestamp as i64;
+            timestamp = temp_timestamp;
         }
 
         let (parsed, msg_type) = i32::parse(&b[pos..])?;
@@ -107,24 +122,27 @@ impl Deserialize for Message {
         let (parsed, sender) = String::parse_utf8(&b[pos..])?;
         pos += parsed;
 
-        // TODO SenderPrefixes feature
-        let mut sender_prefixes = None;
-        if false {
+        #[cfg(feature = "sender-prefixes")]
+        let sender_prefixes: String;
+        #[cfg(feature = "sender-prefixes")]
+        {
             let (parsed, temp) = String::parse_utf8(&b[pos..])?;
-            sender_prefixes = Some(temp);
+            sender_prefixes = temp;
             pos += parsed;
         }
 
-        // TODO SenderPrefixes feature
-        let mut real_name = None;
-        let mut avatar_url = None;
-        if false {
+        #[cfg(feature = "rich-messages")]
+        let real_name: String;
+        #[cfg(feature = "rich-messages")]
+        let avatar_url: String;
+        #[cfg(feature = "rich-messages")]
+        {
             let (parsed, temp) = String::parse_utf8(&b[pos..])?;
-            real_name = Some(temp);
+            real_name = temp;
             pos += parsed;
 
             let (parsed, temp) = String::parse_utf8(&b[pos..])?;
-            avatar_url = Some(temp);
+            avatar_url = temp;
             pos += parsed;
         }
 
@@ -140,8 +158,11 @@ impl Deserialize for Message {
                 flags,
                 buffer,
                 sender,
+                #[cfg(feature = "sender-prefixes")]
                 sender_prefixes,
+                #[cfg(feature = "rich-messages")]
                 real_name,
+                #[cfg(feature = "rich-messages")]
                 avatar_url,
                 content,
             },
