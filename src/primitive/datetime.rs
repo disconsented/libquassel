@@ -76,10 +76,18 @@ impl Deserialize for OffsetDateTime {
 
         let zone = TimeSpec::from(zone as i8);
 
+        // Default to unix epoch when one of these is set to -1
+        if julian_day == -1 || millis_of_day == -1 {
+            return Ok((pos, OffsetDateTime::unix_epoch()));
+        }
+
         let offset: UtcOffset;
         match zone {
             TimeSpec::LocalUnknown | TimeSpec::LocalStandard | TimeSpec::LocalDST => {
-                offset = UtcOffset::try_current_local_offset()?
+                offset = UtcOffset::try_current_local_offset().unwrap_or_else(|_| {
+                    log::warn!("could not get local offset defaulting to utc");
+                    UtcOffset::UTC
+                })
             }
             TimeSpec::UTC => offset = UtcOffset::UTC,
             TimeSpec::OffsetFromUTC => {
