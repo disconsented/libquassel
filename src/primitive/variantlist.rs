@@ -40,6 +40,7 @@ impl Deserialize for VariantList {
         for i in 0..len {
             trace!(target: "primitive::VariantList", "Parsing VariantList element: {:?}", i);
             let (vlen, val) = Variant::parse(&b[pos..])?;
+            trace!("parsed variant: {:?}", val);
             res.push(val);
             pos += vlen;
         }

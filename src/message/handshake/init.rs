@@ -2,6 +2,7 @@ use crate::Deserialize;
 use crate::Serialize;
 
 /// The first few bytes sent to the core to initialize the connection and setup if we want to use tls and compression
+#[derive(Clone, Debug)]
 pub struct Init {
     pub tls: bool,
     pub compression: bool,
