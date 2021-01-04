@@ -1,8 +1,9 @@
+#![feature(external_doc)]
+#![feature(doc_cfg)]
+#![doc(include = "../README.md")]
+#[cfg_attr(docsrs, feature(doc_cfg))]
 #[macro_use]
 mod util;
-
-#[cfg(feature = "client")]
-pub mod client;
 
 #[cfg(test)]
 pub mod tests;
@@ -10,14 +11,22 @@ pub mod tests;
 #[macro_use]
 extern crate failure;
 
+/// Quassel Structures for serialization and deserialization
 pub mod message;
+
+/// Quassels QT based primitive types that make up the more complex messages
 pub mod primitive;
 
+pub mod session;
+
 #[allow(dead_code)]
+/// Error Types
 pub mod error;
 
 #[allow(unused_variables, dead_code)]
 #[cfg(feature = "framing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "framing")))]
+/// Framing impl to be used with [`tokio_util::codec::Framed`]
 pub mod frame;
 
 use failure::Error;

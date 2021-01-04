@@ -7,8 +7,8 @@ use failure::Error;
 
 use log::trace;
 
-use crate::{Deserialize, DeserializeUTF8, Serialize, SerializeUTF8};
 use crate::util;
+use crate::{Deserialize, DeserializeUTF8, Serialize, SerializeUTF8};
 
 /// We Shadow the String type here as we can only use impl on types in our own scope.
 ///
@@ -33,7 +33,6 @@ impl SerializeUTF8 for String {
     fn serialize_utf8(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
         res.extend(self.clone().into_bytes());
-        res.extend(vec![0x00]);
         util::prepend_byte_len(&mut res);
         return Ok(res);
     }
@@ -64,6 +63,7 @@ impl Deserialize for String {
         }
 
         let res: String = String::from_utf16(&chars).unwrap();
+        trace!("parsed string: {}", res);
         return Ok((pos, res));
     }
 }
@@ -81,6 +81,7 @@ impl DeserializeUTF8 for String {
         let ulen = len as usize;
 
         let mut res: String = String::from_utf8(b[4..(ulen + 4)].to_vec())?;
+        trace!("parsed string: {}", res);
 
         // If the last byte is zero remove it
         // Receiving a string as bytearray will sometimes have
@@ -88,6 +89,8 @@ impl DeserializeUTF8 for String {
         if res.chars().last().unwrap() == '\u{0}' {
             let _ = res.pop();
         }
+
+        trace!("parsed string after trunc: {}", res);
 
         return Ok((ulen + 4, res));
     }

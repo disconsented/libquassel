@@ -1,6 +1,5 @@
-use crate::error::ProtocolError;
 use crate::primitive::{StringList, Variant, VariantMap};
-use crate::{HandshakeDeserialize, HandshakeSerialize};
+use crate::HandshakeSerialize;
 
 use failure::Error;
 
@@ -32,7 +31,7 @@ use failure::Error;
 /// | --         | EcdsaCertfpKeys | ECDSA keys for CertFP in identities |
 /// | --         | LongMessageId | 64-bit IDs for messages |
 /// | --         | SyncedCoreInfo | CoreInfo dynamically updated using signals |
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientInit {
     /// Version of the client
     pub client_version: String,
@@ -68,24 +67,13 @@ impl HandshakeSerialize for ClientInit {
     }
 }
 
-impl HandshakeDeserialize for ClientInit {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
-        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
-
-        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
-
-        if msgtype == "ClientInit" {
-            return Ok((
-                len,
-                Self {
-                    client_version: match_variant!(values["ClientVersion"], Variant::String),
-                    client_date: match_variant!(values["ClientDate"], Variant::String),
-                    feature_list: match_variant!(values["FeatureList"], Variant::StringList),
-                    client_features: match_variant!(values["Features"], Variant::u32),
-                },
-            ));
-        } else {
-            bail!(ProtocolError::WrongMsgType);
+impl From<VariantMap> for ClientInit {
+    fn from(input: VariantMap) -> Self {
+        ClientInit {
+            client_version: match_variant!(input.get("ClientVersion").unwrap(), Variant::String),
+            client_date: match_variant!(input.get("ClientDate").unwrap(), Variant::String),
+            client_features: match_variant!(input.get("Features").unwrap(), Variant::u32),
+            feature_list: match_variant!(input.get("FeatureList").unwrap(), Variant::StringList),
         }
     }
 }

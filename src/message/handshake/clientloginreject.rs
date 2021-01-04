@@ -1,14 +1,13 @@
-use crate::error::ProtocolError;
 use crate::primitive::{Variant, VariantMap};
-use crate::{HandshakeDeserialize, HandshakeSerialize};
+use crate::HandshakeSerialize;
 
 use failure::Error;
 
 /// ClientLoginReject is received after the client failed to login
 /// It contains an error message as String
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientLoginReject {
-    error: String,
+    pub error: String,
 }
 
 impl HandshakeSerialize for ClientLoginReject {
@@ -26,21 +25,10 @@ impl HandshakeSerialize for ClientLoginReject {
     }
 }
 
-impl HandshakeDeserialize for ClientLoginReject {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
-        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
-
-        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
-
-        if msgtype == "ClientLogin" {
-            return Ok((
-                len,
-                Self {
-                    error: match_variant!(values["ErrorString"], Variant::String),
-                },
-            ));
-        } else {
-            bail!(ProtocolError::WrongMsgType);
+impl From<VariantMap> for ClientLoginReject {
+    fn from(input: VariantMap) -> Self {
+        ClientLoginReject {
+            error: match_variant!(input.get("ErrorString").unwrap(), Variant::String),
         }
     }
 }

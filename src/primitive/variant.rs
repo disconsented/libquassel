@@ -36,6 +36,7 @@ pub enum Variant {
     VariantList(VariantList),
     String(String),
     StringUTF8(String),
+    ByteArray(String),
     StringList(StringList),
     bool(bool),
     u64(u64),
@@ -73,6 +74,11 @@ impl Serialize for Variant {
                 res.extend(v.serialize()?.iter());
             }
             Variant::StringUTF8(v) => {
+                res.extend(primitive::QBYTEARRAY.to_be_bytes().iter());
+                res.extend(unknown.to_be_bytes().iter());
+                res.extend(v.serialize_utf8()?.iter());
+            }
+            Variant::ByteArray(v) => {
                 res.extend(primitive::QBYTEARRAY.to_be_bytes().iter());
                 res.extend(unknown.to_be_bytes().iter());
                 res.extend(v.serialize_utf8()?.iter());
@@ -201,8 +207,7 @@ impl Deserialize for Variant {
                 return Ok((len + vlen, Variant::StringList(value.clone())));
             }
             primitive::QDATETIME => {
-                trace!(target: "primitive::Variant", "Parsing Variant: Date");
-                //                let (vlen, value) = DateTime::parse(&b[len..])?;
+                trace!(target: "primitive::Variant", "Parsing Variant: DateTime");
                 let (vlen, value): (usize, DateTime) = Deserialize::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::DateTime(value.clone())));
             }
@@ -269,11 +274,25 @@ impl Deserialize for Variant {
                         return Ok((len + user_type_len + vlen, Variant::VariantMap(value)));
                     }
                     // As i32
-                    "BufferId" | "IdentityId" | "NetworkId" | "MsgId" => {
+                    "BufferId" | "IdentityId" | "NetworkId" => {
                         trace!(target: "primitive::Variant", "UserType is i32");
 
                         let (vlen, value) = i32::parse(&b[(len + user_type_len)..])?;
                         return Ok((len + user_type_len + vlen, Variant::i32(value)));
+                    }
+                    #[cfg(not(feature = "long-message-id"))]
+                    "MsgId" => {
+                        trace!(target: "primitive::Variant", "UserType is i32");
+
+                        let (vlen, value) = i32::parse(&b[(len + user_type_len)..])?;
+                        return Ok((len + user_type_len + vlen, Variant::i32(value)));
+                    }
+                    #[cfg(feature = "long-message-id")]
+                    "MsgId" => {
+                        trace!(target: "primitive::Variant", "UserType is i64");
+
+                        let (vlen, value) = i64::parse(&b[(len + user_type_len)..])?;
+                        return Ok((len + user_type_len + vlen, Variant::i64(value)));
                     }
                     // As i64
                     "PeerPtr" => {

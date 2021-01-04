@@ -1,11 +1,10 @@
-use crate::error::ProtocolError;
-use crate::primitive::{StringList, Variant, VariantList, VariantMap};
-use crate::{HandshakeDeserialize, HandshakeSerialize};
+use crate::primitive::{Variant, VariantList, VariantMap};
+use crate::HandshakeSerialize;
 
 use failure::Error;
 
 /// ClientInitAck is received when the initialization was successfull
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientInitAck {
     /// Flags of supported legacy features
     pub core_features: u32,
@@ -16,7 +15,7 @@ pub struct ClientInitAck {
     /// List of VariantMaps of info on available authenticators
     pub authenticators: VariantList,
     /// List of supported extended features
-    pub feature_list: StringList,
+    pub feature_list: Vec<String>,
 }
 
 impl HandshakeSerialize for ClientInitAck {
@@ -47,28 +46,21 @@ impl HandshakeSerialize for ClientInitAck {
     }
 }
 
-impl HandshakeDeserialize for ClientInitAck {
-    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
-        let (len, values): (usize, VariantMap) = HandshakeDeserialize::parse(b)?;
-
-        let msgtype = match_variant!(&values["MsgType"], Variant::StringUTF8);
-
-        if msgtype == "ClientInitAck" {
-            return Ok((
-                len,
-                Self {
-                    core_features: 0x00008000,
-                    core_configured: match_variant!(values["Configured"], Variant::bool),
-                    storage_backends: match_variant!(
-                        values["StorageBackends"],
-                        Variant::VariantList
-                    ),
-                    authenticators: match_variant!(values["Authenticators"], Variant::VariantList),
-                    feature_list: match_variant!(values["FeatureList"], Variant::StringList),
-                },
-            ));
-        } else {
-            bail!(ProtocolError::WrongMsgType);
+impl From<VariantMap> for ClientInitAck {
+    fn from(input: VariantMap) -> Self {
+        ClientInitAck {
+            // TODO make this compatible with older clients
+            core_features: 0,
+            core_configured: match_variant!(input.get("Configured").unwrap(), Variant::bool),
+            storage_backends: match_variant!(
+                input.get("StorageBackends").unwrap(),
+                Variant::VariantList
+            ),
+            authenticators: match_variant!(
+                input.get("Authenticators").unwrap(),
+                Variant::VariantList
+            ),
+            feature_list: match_variant!(input.get("FeatureList").unwrap(), Variant::StringList),
         }
     }
 }
