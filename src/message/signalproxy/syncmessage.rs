@@ -17,9 +17,9 @@ impl Serialize for SyncMessage {
         let mut res = VariantList::new();
 
         res.push(Variant::i32(MessageType::SyncMessage as i32));
-        res.push(Variant::StringUTF8(self.class_name.clone()));
-        res.push(Variant::StringUTF8(self.object_name.clone()));
-        res.push(Variant::StringUTF8(self.slot_name.clone()));
+        res.push(Variant::ByteArray(self.class_name.clone()));
+        res.push(Variant::ByteArray(self.object_name.clone()));
+        res.push(Variant::ByteArray(self.slot_name.clone()));
 
         res.append(&mut self.params.clone());
 
@@ -36,9 +36,9 @@ impl Deserialize for SyncMessage {
         Ok((
             size,
             Self {
-                class_name: match_variant!(res.remove(0), Variant::StringUTF8),
-                object_name: match_variant!(res.remove(0), Variant::StringUTF8),
-                slot_name: match_variant!(res.remove(0), Variant::StringUTF8),
+                class_name: match_variant!(res.remove(0), Variant::ByteArray),
+                object_name: match_variant!(res.remove(0), Variant::ByteArray),
+                slot_name: match_variant!(res.remove(0), Variant::ByteArray),
                 params: res,
             },
         ))

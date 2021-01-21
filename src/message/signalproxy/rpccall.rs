@@ -27,7 +27,7 @@ impl Serialize for RpcCall {
 
         match self {
             RpcCall::DisplayMessage(msg) => {
-                res.push(Variant::StringUTF8("2displayMsg(Message)".to_string()));
+                res.push(Variant::ByteArray("2displayMsg(Message)".to_string()));
                 res.push(Variant::Message(msg.message.clone()));
             }
         }
@@ -42,7 +42,7 @@ impl Deserialize for RpcCall {
 
         res.remove(0);
 
-        let rpc = match_variant!(res.remove(0), Variant::StringUTF8);
+        let rpc = match_variant!(res.remove(0), Variant::ByteArray);
 
         match rpc.as_str() {
             "2displayMsg(Message)" => {

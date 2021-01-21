@@ -14,8 +14,8 @@ impl Serialize for InitData {
         let mut res = VariantList::new();
 
         res.push(Variant::i32(MessageType::InitData as i32));
-        res.push(Variant::StringUTF8(self.class_name.clone()));
-        res.push(Variant::StringUTF8(self.object_name.clone()));
+        res.push(Variant::ByteArray(self.class_name.clone()));
+        res.push(Variant::ByteArray(self.object_name.clone()));
 
         res.append(&mut self.init_data.clone());
 
@@ -32,8 +32,8 @@ impl Deserialize for InitData {
         Ok((
             size,
             Self {
-                class_name: match_variant!(res.remove(0), Variant::StringUTF8),
-                object_name: match_variant!(res.remove(0), Variant::StringUTF8),
+                class_name: match_variant!(res.remove(0), Variant::ByteArray),
+                object_name: match_variant!(res.remove(0), Variant::ByteArray),
                 init_data: res,
             },
         ))
