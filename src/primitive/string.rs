@@ -50,6 +50,7 @@ impl Deserialize for String {
 
         // length as usize
         let ulen = len as usize;
+        trace!("parsed bytes: {:x?}", &b[0..ulen]);
         let mut pos: usize = 4;
         let mut chars: Vec<u16> = Vec::new();
         loop {
@@ -91,7 +92,62 @@ impl DeserializeUTF8 for String {
         }
 
         trace!("parsed string after trunc: {}", res);
+        trace!("parsed bytes: {:x?}", &b[0..ulen]);
 
         return Ok((ulen + 4, res));
     }
+}
+
+#[test]
+pub fn string_serialize() {
+    let test_string: String = String::from("Configured");
+
+    assert_eq!(
+        test_string.serialize().unwrap(),
+        [
+            0, 0, 0, 20, 0, 67, 0, 111, 0, 110, 0, 102, 0, 105, 0, 103, 0, 117, 0, 114, 0, 101, 0,
+            100
+        ]
+    );
+}
+
+#[test]
+pub fn string_serialize_utf8() {
+    let test_string: String = String::from("Configured");
+
+    assert_eq!(
+        test_string.serialize_utf8().unwrap(),
+        [0, 0, 0, 10, 67, 111, 110, 102, 105, 103, 117, 114, 101, 100]
+    );
+}
+
+#[test]
+pub fn string_deserialize() {
+    let test_bytes: &[u8] = &[
+        0, 0, 0, 20, 0, 67, 0, 111, 0, 110, 0, 102, 0, 105, 0, 103, 0, 117, 0, 114, 0, 101, 0, 100,
+        0, 0, 0, 1,
+    ];
+    let (len, res) = String::parse(test_bytes).unwrap();
+    assert_eq!(res, "Configured");
+    assert_eq!(len, 24);
+}
+
+#[test]
+pub fn string_deserialize_utf8() {
+    let test_bytes: &[u8] = &[
+        0, 0, 0, 10, 67, 111, 110, 102, 105, 103, 117, 114, 101, 100, 0, 0, 0, 1,
+    ];
+    let (len, res) = String::parse_utf8(test_bytes).unwrap();
+    assert_eq!(len, 14);
+    assert_eq!(res, "Configured");
+}
+
+#[test]
+pub fn string_deserialize_utf8_null_terminated() {
+    let test_bytes: &[u8] = &[
+        0, 0, 0, 11, 67, 111, 110, 102, 105, 103, 117, 114, 101, 100, 0, 0, 0, 0, 1,
+    ];
+    let (len, res) = String::parse_utf8(test_bytes).unwrap();
+    assert_eq!(len, 15);
+    assert_eq!(res, "Configured");
 }

@@ -1,8 +1,6 @@
-extern crate byteorder;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::io::Cursor;
 
-use std::convert::TryInto;
 use std::result::Result;
 use std::vec::Vec;
 
@@ -57,6 +55,7 @@ impl Serialize for i8 {
 
 impl Deserialize for i8 {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
-        return Ok((1, b[0].try_into()?));
+        let mut rdr = Cursor::new(&b[0..1]);
+        return Ok((1, rdr.read_i8()?));
     }
 }

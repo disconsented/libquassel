@@ -13,6 +13,8 @@ pub struct ClientInitAck {
     /// List of VariantMaps of info on available backends
     pub storage_backends: VariantList,
     /// List of VariantMaps of info on available authenticators
+    #[cfg(feature = "authenticators")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "authenticators")))]
     pub authenticators: VariantList,
     /// List of supported extended features
     pub feature_list: Vec<String>,
@@ -34,6 +36,7 @@ impl HandshakeSerialize for ClientInitAck {
             "StorageBackends".to_string(),
             Variant::VariantList(self.storage_backends.clone()),
         );
+        #[cfg(feature = "authenticators")]
         values.insert(
             "Authenticators".to_string(),
             Variant::VariantList(self.authenticators.clone()),
@@ -56,6 +59,7 @@ impl From<VariantMap> for ClientInitAck {
                 input.get("StorageBackends").unwrap(),
                 Variant::VariantList
             ),
+            #[cfg(feature = "authenticators")]
             authenticators: match_variant!(
                 input.get("Authenticators").unwrap(),
                 Variant::VariantList

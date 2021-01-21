@@ -1,12 +1,10 @@
+#![feature(array_value_iter)]
 #![feature(external_doc)]
 #![feature(doc_cfg)]
 #![doc(include = "../README.md")]
 #[cfg_attr(docsrs, feature(doc_cfg))]
 #[macro_use]
 mod util;
-
-#[cfg(test)]
-pub mod tests;
 
 #[macro_use]
 extern crate failure;

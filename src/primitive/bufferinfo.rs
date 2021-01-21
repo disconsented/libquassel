@@ -5,8 +5,6 @@ use failure::Error;
 use crate::{Deserialize, DeserializeUTF8};
 use crate::{Serialize, SerializeUTF8};
 
-extern crate bytes;
-
 /// The BufferInfo struct represents a BufferInfo as received in IRC
 ///
 /// BufferInfo is, like all other struct based types, serialized sequentially.
@@ -77,5 +75,40 @@ impl From<i16> for BufferType {
             0x08 => return Self::Group,
             _ => unimplemented!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bufferinfo_serialize() {
+        let buffer = BufferInfo {
+            id: 1,
+            network_id: 1,
+            buffer_type: BufferType::Channel,
+            name: "#test".to_string(),
+        };
+
+        assert_eq!(
+            buffer.serialize().unwrap(),
+            [0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 35, 116, 101, 115, 116]
+        )
+    }
+
+    #[test]
+    fn bufferinfo_deserialize() {
+        let buffer = BufferInfo {
+            id: 1,
+            network_id: 1,
+            buffer_type: BufferType::Channel,
+            name: "#test".to_string(),
+        };
+        let bytes = vec![
+            0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 35, 116, 101, 115, 116,
+        ];
+
+        assert_eq!(BufferInfo::parse(&bytes).unwrap(), (23, buffer))
     }
 }

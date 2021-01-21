@@ -7,8 +7,6 @@ use crate::{Serialize, SerializeUTF8};
 
 use crate::primitive::BufferInfo;
 
-extern crate bytes;
-
 /// The Message struct represents a Message as received in IRC
 ///
 /// Messages are, like all other struct based types, serialized sequentially.
@@ -22,7 +20,9 @@ pub struct Message {
     #[cfg(not(feature = "long-message-id"))]
     #[cfg_attr(docsrs, doc(cfg(not(feature = "long-message-id"))))]
     pub msg_id: i32,
-    /// The timestamp of the message in UNIX time (32-bit, seconds, 64-bit if long-time feature enabled)
+    /// The timestamp of the message in UNIX time.
+    /// If long-time is disabled this is an i32 representing the seconds since EPOCH.
+    /// If long-time is enabled this is an i64 representing the miliseconds since EPOCH.
     #[cfg(feature = "long-time")]
     #[cfg_attr(docsrs, doc(cfg(feature = "long-time")))]
     pub timestamp: i64,
@@ -218,5 +218,79 @@ impl From<i32> for MessageType {
             0x00040000 => MessageType::Markerline,
             _ => unimplemented!(),
         }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "all-quassel-features")]
+mod tests {
+    use super::*;
+    use crate::primitive::{BufferInfo, BufferType};
+
+    #[test]
+    fn message_serialize() {
+        let message = Message {
+            msg_id: 1,
+            timestamp: 1609846597,
+            msg_type: MessageType::Plain,
+            flags: 0,
+            buffer: BufferInfo {
+                id: 1,
+                network_id: 1,
+                buffer_type: BufferType::Channel,
+                name: "#test".to_string(),
+            },
+            sender: "test".to_string(),
+            content: "this is a test message".to_string(),
+            sender_prefixes: "blabla".to_string(),
+            real_name: "test user".to_string(),
+            avatar_url: "https://jfkalsdkjfj.com/kjkj".to_string(),
+        };
+
+        assert_eq!(
+            message.serialize().unwrap(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 95, 244, 79, 69, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+                0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 35, 116, 101, 115, 116, 0, 0, 0, 4, 116,
+                101, 115, 116, 0, 0, 0, 6, 98, 108, 97, 98, 108, 97, 0, 0, 0, 9, 116, 101, 115,
+                116, 32, 117, 115, 101, 114, 0, 0, 0, 28, 104, 116, 116, 112, 115, 58, 47, 47, 106,
+                102, 107, 97, 108, 115, 100, 107, 106, 102, 106, 46, 99, 111, 109, 47, 107, 106,
+                107, 106, 0, 0, 0, 22, 116, 104, 105, 115, 32, 105, 115, 32, 97, 32, 116, 101, 115,
+                116, 32, 109, 101, 115, 115, 97, 103, 101
+            ]
+        )
+    }
+
+    #[test]
+    fn message_deserialize() {
+        let message = Message {
+            msg_id: 1,
+            timestamp: 1609846597,
+            msg_type: MessageType::Plain,
+            flags: 0,
+            buffer: BufferInfo {
+                id: 1,
+                network_id: 1,
+                buffer_type: BufferType::Channel,
+                name: "#test".to_string(),
+            },
+            sender: "test".to_string(),
+            content: "this is a test message".to_string(),
+            sender_prefixes: "blabla".to_string(),
+            real_name: "test user".to_string(),
+            avatar_url: "https://jfkalsdkjfj.com/kjkj".to_string(),
+        };
+
+        let bytes = vec![
+            0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 95, 244, 79, 69, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0,
+            0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 35, 116, 101, 115, 116, 0, 0, 0, 4, 116, 101, 115,
+            116, 0, 0, 0, 6, 98, 108, 97, 98, 108, 97, 0, 0, 0, 9, 116, 101, 115, 116, 32, 117,
+            115, 101, 114, 0, 0, 0, 28, 104, 116, 116, 112, 115, 58, 47, 47, 106, 102, 107, 97,
+            108, 115, 100, 107, 106, 102, 106, 46, 99, 111, 109, 47, 107, 106, 107, 106, 0, 0, 0,
+            22, 116, 104, 105, 115, 32, 105, 115, 32, 97, 32, 116, 101, 115, 116, 32, 109, 101,
+            115, 115, 97, 103, 101,
+        ];
+
+        assert_eq!(Message::parse(&bytes).unwrap(), (133, message))
     }
 }

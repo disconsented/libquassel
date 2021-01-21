@@ -7,8 +7,6 @@ use log::trace;
 
 use crate::{Deserialize, Serialize};
 
-extern crate bytes;
-
 use crate::primitive::Variant;
 
 /// VariantLists are represented as a Vec of Variants.

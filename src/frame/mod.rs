@@ -15,6 +15,9 @@ use flate2::Decompress;
 use flate2::FlushCompress;
 use flate2::FlushDecompress;
 
+#[cfg(test)]
+mod tests;
+
 /// Builder for the QuasselCodec
 #[derive(Debug, Clone, Copy)]
 pub struct Builder {
@@ -28,6 +31,7 @@ pub struct Builder {
 }
 
 // An error when the number of bytes read is more than max frame length.
+#[derive(PartialEq)]
 pub struct QuasselCodecError {
     _priv: (),
 }

@@ -11,8 +11,6 @@ use crate::Serialize;
 use crate::primitive::Variant;
 use crate::util;
 
-extern crate bytes;
-
 /// VariantMaps are represented as a HashMap with String as key and Variant as value
 ///
 /// They are serialized as the amount of keys as an i32 then for each entry a String and a Variant.

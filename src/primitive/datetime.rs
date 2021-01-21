@@ -166,3 +166,37 @@ impl Deserialize for Time {
         Ok((4, time))
     }
 }
+
+#[test]
+pub fn datetime_serialize() {
+    let datetime = DateTime::parse("2020-02-19 13:00 +0200", "%Y-%m-%d %R %z").unwrap();
+
+    let sers = datetime.serialize().unwrap();
+    let bytes = vec![0, 37, 133, 19, 2, 202, 28, 128, 3, 0, 0, 28, 32];
+
+    assert_eq!(sers, bytes)
+}
+
+#[test]
+pub fn datetime_deserialize() {
+    let datetime = DateTime::parse("2020-02-19 13:00 +0200", "%Y-%m-%d %R %z").unwrap();
+
+    let bytes = vec![0, 37, 133, 19, 2, 202, 28, 128, 3, 0, 0, 28, 32];
+    let (_, res): (usize, DateTime) = Deserialize::parse(&bytes).unwrap();
+
+    assert_eq!(res, datetime)
+}
+
+#[test]
+pub fn datetime_deserialize_epoch() {
+    let datetime = DateTime::unix_epoch();
+
+    let bytes = vec![0, 37, 133, 19, 0xff, 0xff, 0xff, 0xff, 3, 0, 0, 28, 32];
+    let (_, res): (usize, DateTime) = Deserialize::parse(&bytes).unwrap();
+
+    let bytes = vec![0xff, 0xff, 0xff, 0xff, 2, 202, 28, 128, 3, 0, 0, 28, 32];
+    let (_, res2): (usize, DateTime) = Deserialize::parse(&bytes).unwrap();
+
+    assert_eq!(res, datetime);
+    assert_eq!(res2, datetime)
+}

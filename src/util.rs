@@ -38,3 +38,22 @@ pub fn insert_bytes(pos: usize, buf: &mut Vec<u8>, input: &mut [u8]) {
         buf.insert(pos, *i)
     }
 }
+
+#[macro_export]
+macro_rules! map {
+    // map-like
+    ($($k:expr => $v:expr),* $(,)?) => {
+        std::iter::Iterator::collect(std::array::IntoIter::new([$(($k, $v),)*]))
+    };
+    // set-like
+    ($($v:expr),* $(,)?) => {
+        std::iter::Iterator::collect(std::array::IntoIter::new([$($v,)*]))
+    };
+}
+
+#[macro_export]
+macro_rules! s {
+    ($values:expr) => {
+        std::string::String::from($values)
+    };
+}
