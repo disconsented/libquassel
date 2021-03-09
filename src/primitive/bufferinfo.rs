@@ -42,6 +42,7 @@ impl Deserialize for BufferInfo {
 
         // There are 4 additional undocumented Bytes in the BufferInfo
         // so we start at byte 14
+        // TODO is groupid
         let (size, name) = String::parse_utf8(&b[14..])?;
 
         return Ok((

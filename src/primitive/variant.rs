@@ -12,6 +12,8 @@ use crate::{Serialize, SerializeUTF8};
 
 use crate::primitive::{BufferInfo, Date, DateTime, Message, Time, VariantList, VariantMap};
 
+use libquassel_derive::From;
+
 /// Variant represents the possible types we can receive
 ///
 /// Variant's are serizalized as the Type as a i32 and then the Type in it's own format
@@ -21,9 +23,10 @@ use crate::primitive::{BufferInfo, Date, DateTime, Message, Time, VariantList, V
 ///
 /// ByteArray is de-/serialized as a C ByteArray.
 #[allow(non_camel_case_types, dead_code)]
-#[derive(Clone, Debug, std::cmp::PartialEq)]
+#[derive(Clone, Debug, PartialEq, From)]
 pub enum Variant {
     Unknown,
+    #[from(ignore)]
     UserType(String, Vec<u8>),
     BufferInfo(BufferInfo),
     Message(Message),
@@ -33,6 +36,7 @@ pub enum Variant {
     VariantMap(VariantMap),
     VariantList(VariantList),
     String(String),
+    #[from(ignore)]
     ByteArray(String),
     StringList(StringList),
     bool(bool),

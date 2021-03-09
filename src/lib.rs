@@ -1,4 +1,3 @@
-#![feature(array_value_iter)]
 #![feature(external_doc)]
 #![feature(doc_cfg)]
 #![doc(include = "../README.md")]

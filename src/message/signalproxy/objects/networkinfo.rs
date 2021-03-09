@@ -16,7 +16,7 @@ pub struct NetworkInfo {
         rename = "ServerList",
         override_type = "VariantList",
         to_map = "|server| Variant::VariantMap(server.to_network())",
-        from_map = "|server| NetworkServer::from_network(match_variant!(server, Variant::VariantMap))"
+        from_map = "|server| NetworkServer::from_network(&mut match_variant!(server, Variant::VariantMap))"
     )]
     pub server_list: Vec<NetworkServer>,
     #[network(rename = "perform")]
@@ -165,5 +165,10 @@ mod tests {
     #[test]
     fn networkinfo_to_network() {
         assert_eq!(get_runtime().to_network(), get_network())
+    }
+
+    #[test]
+    fn networkinfo_from_network() {
+        assert_eq!(NetworkInfo::from_network(&mut get_network()), get_runtime())
     }
 }

@@ -91,7 +91,7 @@ impl Network for IrcChannel {
 
         res
     }
-    fn from_network(input: Self::Item) -> Self {
+    fn from_network(input: &mut Self::Item) -> Self {
         Self {
             channel_modes_a: match_variant!(
                 match_variant!(
@@ -284,6 +284,6 @@ mod tests {
 
     #[test]
     fn ircchannel_from_network() {
-        assert_eq!(IrcChannel::from_network(get_network()), get_runtime())
+        assert_eq!(IrcChannel::from_network(&mut get_network()), get_runtime())
     }
 }

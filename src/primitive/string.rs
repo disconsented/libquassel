@@ -10,6 +10,8 @@ use log::trace;
 use crate::util;
 use crate::{Deserialize, DeserializeUTF8, Serialize, SerializeUTF8};
 
+pub type ByteArray = String;
+
 /// We Shadow the String type here as we can only use impl on types in our own scope.
 ///
 /// Strings are serialized as an i32 for the length in bytes, then the chars represented in UTF-16 in bytes.

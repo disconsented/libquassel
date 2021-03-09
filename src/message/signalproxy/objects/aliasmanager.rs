@@ -1,4 +1,4 @@
-use crate::primitive::{StringList, Variant, VariantList, VariantMap};
+use crate::primitive::{StringList, Variant, VariantMap};
 
 use crate::message::signalproxy::Network;
 
@@ -13,14 +13,45 @@ pub struct Alias {
     expansion: String,
 }
 
+impl Alias {
+    fn from_network_internal(input: &VariantMap) -> Vec<Self> {
+        let names = match_variant!(input.get("names").unwrap(), Variant::StringList);
+        let expansions = match_variant!(input.get("expansions").unwrap(), Variant::StringList);
+
+        return names
+            .iter()
+            .zip(expansions)
+            .map(|(name, expansion)| Alias {
+                name: name.clone(),
+                expansion,
+            })
+            .collect();
+    }
+}
+
+impl Network for Alias {
+    type Item = VariantMap;
+
+    fn to_network(&self) -> Self::Item {
+        let mut map = VariantMap::new();
+        map.insert(s!("names"), Variant::StringList(vec![self.name.clone()]));
+        map.insert(
+            s!("expansions"),
+            Variant::StringList(vec![self.expansion.clone()]),
+        );
+
+        return map;
+    }
+
+    fn from_network(input: &mut Self::Item) -> Self {
+        Alias::from_network_internal(&input)[0].clone()
+    }
+}
+
 impl Network for AliasManager {
-    type Item = VariantList;
+    type Item = VariantMap;
 
-    fn to_network(&self) -> VariantList {
-        let mut res = VariantList::new();
-
-        res.push(Variant::ByteArray(s!("Aliases")));
-
+    fn to_network(&self) -> Self::Item {
         let (names, expansions) = self.aliases.iter().fold(
             (StringList::new(), StringList::new()),
             |(mut names, mut expansions), alias| {
@@ -34,17 +65,10 @@ impl Network for AliasManager {
         map.insert(s!("names"), Variant::StringList(names));
         map.insert(s!("expansions"), Variant::StringList(expansions));
 
-        res.push(Variant::VariantMap(map));
-
-        return res;
+        return map;
     }
 
-    fn from_network(input: crate::primitive::VariantList) -> Self {
-        let input = match &input[1] {
-            Variant::VariantMap(input) => input,
-            _ => unimplemented!(),
-        };
-
+    fn from_network(input: &mut Self::Item) -> Self {
         let names = match_variant!(input.get("names").unwrap(), Variant::StringList);
         let expansions = match_variant!(input.get("expansions").unwrap(), Variant::StringList);
 
@@ -80,24 +104,21 @@ mod tests {
         }
     }
 
-    fn get_dest() -> VariantList {
-        vec![
-            Variant::ByteArray(s!("Aliases")),
-            Variant::VariantMap(map! {
-                s!("names") => Variant::StringList(
-                    vec![
-                        s!("j"),
-                        s!("ns"),
-                    ],
-                ),
-                s!("expansions") => Variant::StringList(
-                    vec![
-                        s!("/join $0"),
-                        s!("/msg nickserv $0"),
-                    ],
-                ),
-            }),
-        ]
+    fn get_dest() -> VariantMap {
+        map! {
+            s!("names") => Variant::StringList(
+                vec![
+                    s!("j"),
+                    s!("ns"),
+                ],
+            ),
+            s!("expansions") => Variant::StringList(
+                vec![
+                    s!("/join $0"),
+                    s!("/msg nickserv $0"),
+                ],
+            ),
+        }
     }
 
     #[test]
@@ -107,7 +128,7 @@ mod tests {
 
     #[test]
     fn aliasmanager_from_network() {
-        assert_eq!(AliasManager::from_network(get_dest()), get_src())
+        assert_eq!(AliasManager::from_network(&mut get_dest()), get_src())
     }
 }
 

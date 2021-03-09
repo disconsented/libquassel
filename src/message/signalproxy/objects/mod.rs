@@ -1,13 +1,10 @@
-// mod aliasmanager;
-// mod backlogmanager;
-
 mod aliasmanager;
 mod buffersyncer;
 mod identity;
-mod ircchannel;
-mod ircuser;
-mod network;
-mod networkinfo;
+// mod ircchannel;
+// mod ircuser;
+// mod network;
+// mod networkinfo;
 
 pub use aliasmanager::*;
 pub use buffersyncer::*;

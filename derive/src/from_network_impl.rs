@@ -56,7 +56,7 @@ pub(crate) fn map_list(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
                     syn::parse_str(&field.from_map.as_ref().unwrap()).unwrap();
 
                 quote! {
-                    #field_name: match input.get(#field_rename).unwrap() {
+                    #field_name: match input.get_mut(#field_rename).unwrap() {
                         crate::primitive::Variant::VariantList(input) => match &input.remove(0) {
                             crate::primitive::Variant::#field_type(input) => input.iter().map(#field_map).collect(),
                             _ => unimplemented!()
@@ -66,7 +66,7 @@ pub(crate) fn map_list(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
                 }
             } else {
                 quote! {
-                    #field_name: match input.get(#field_rename).unwrap() {
+                    #field_name: match input.get_mut(#field_rename).unwrap() {
                         crate::primitive::Variant::VariantList(input) => match &input.remove(0) {
                             crate::primitive::Variant::#field_type(input) => input.clone(),
                             _ => unimplemented!()

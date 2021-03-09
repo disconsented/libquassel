@@ -1,8 +1,25 @@
-use crate::primitive::{DateTime, StringList};
+use std::collections::HashMap;
+
+use crate::primitive::{DateTime, StringList, Variant, VariantMap};
 
 #[allow(unused_imports)]
 use crate::message::signalproxy::Network;
 use libquassel_derive::Network;
+
+impl Network for Vec<IrcUser> {
+    type Item = VariantMap;
+
+    fn to_network(&self) -> Self::Item {
+        Variant::VariantMap(self.iter().fold(HashMap::new(), |mut res, v| {
+            res.extend(v.to_network());
+
+            res
+        }))
+    }
+    fn from_network(input: &mut Self::Item) -> Self {
+        todo!()
+    }
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Network)]
@@ -196,6 +213,11 @@ mod tests {
 
     #[test]
     fn ircuser_from_network() {
-        assert_eq!(IrcUser::from_network(get_network()), get_runtime())
+        assert_eq!(IrcUser::from_network(&mut get_network()), get_runtime())
+    }
+
+    #[test]
+    fn vec_ircuser_to_network() {
+        assert_eq!(get_runtime().to_network(), get_network())
     }
 }

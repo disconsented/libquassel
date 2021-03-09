@@ -3,7 +3,7 @@ use syn;
 
 use syn::parse_macro_input;
 
-use darling::{FromDeriveInput, FromField, FromMeta};
+use darling::{FromDeriveInput, FromField, FromMeta, FromVariant};
 
 mod from_network_impl;
 mod to_network_impl;
@@ -107,7 +107,7 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 return res;
             }
 
-            fn from_network(input: Self::Item) -> Self {
+            fn from_network(input: &mut Self::Item) -> Self {
                 Self {
                     #(#from_network_impl_center)*
                 }
@@ -115,7 +115,7 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    // println!("{}", gen);
+    println!("{}", gen);
 
     gen.into()
 }
@@ -141,4 +141,76 @@ fn get_field_type(field: &NetworkField) -> syn::Type {
         }),
         None => field.ty.clone(),
     }
+}
+
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(from), supports(enum_any))]
+struct Enum {
+    ident: syn::Ident,
+    attrs: Vec<syn::Attribute>,
+}
+
+#[derive(Debug, FromVariant)]
+#[darling(attributes(from))]
+struct EnumField {
+    ident: syn::Ident,
+    fields: darling::ast::Fields<syn::Type>,
+
+    #[darling(default)]
+    ignore: bool,
+}
+
+#[proc_macro_derive(From, attributes(from))]
+pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    // println!("{:#?}", input);
+
+    let network = Enum::from_derive_input(&input).unwrap();
+    // println!("{:#?}", network);
+
+    let enum_name = network.ident;
+
+    let fields: Vec<EnumField> = match &input.data {
+        syn::Data::Enum(data) => data
+            .variants
+            .iter()
+            .map(|field| EnumField::from_variant(field).expect("Could not parse field"))
+            .collect(),
+        _ => unimplemented!(),
+    };
+
+    let derives = fields
+        .iter()
+        .filter(|field| field.fields.fields.len() > 0 && !field.ignore)
+        .map(|field| {
+            let variant = &field.ident;
+            let inner_type = &field.fields.fields[0];
+
+            quote! {
+                impl From<#inner_type> for #enum_name {
+                    fn from(input: #inner_type) -> Self {
+                        Self::#variant(input)
+                    }
+                }
+
+                impl Into<#inner_type> for #enum_name {
+                    fn into(self) -> #inner_type {
+                        match self {
+                            Self::#variant(input) => input,
+                            _ => unimplemented!(),
+                        }
+                    }
+                }
+            }
+        });
+
+    // println!("{:#?}", fields);
+
+    let gen = quote! {
+        #(#derives)*
+    };
+
+    // println!("{}", gen);
+
+    gen.into()
 }
