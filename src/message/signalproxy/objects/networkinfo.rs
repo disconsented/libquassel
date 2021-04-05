@@ -1,23 +1,16 @@
-use crate::primitive::{StringList, Variant};
+use crate::primitive::StringList;
 
-#[allow(unused_imports)]
 use libquassel_derive::Network;
 
 use crate::message::objects::network::NetworkServer;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Network)]
 #[network(repr = "list")]
 pub struct NetworkInfo {
     #[network(rename = "networkName")]
     pub network_name: String,
 
-    #[network(
-        rename = "ServerList",
-        override_type = "VariantList",
-        to_map = "|server| Variant::VariantMap(server.to_network())",
-        from_map = "|server| NetworkServer::from_network(&mut match_variant!(server, Variant::VariantMap))"
-    )]
+    #[network(rename = "ServerList", network, variant = "VariantList")]
     pub server_list: Vec<NetworkServer>,
     #[network(rename = "perform")]
     pub perform: StringList,
@@ -75,15 +68,12 @@ pub struct NetworkInfo {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        message::objects::network::NetworkServer,
-        primitive::{Variant, VariantList},
-    };
+    use crate::primitive::{Variant, VariantList};
 
     use super::*;
     use crate::message::signalproxy::translation::Network;
 
-    use pretty_assertions::{assert_eq, assert_ne};
+    use pretty_assertions::assert_eq;
 
     fn get_network() -> VariantList {
         vec![

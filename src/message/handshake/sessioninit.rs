@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::message::objects::Identity;
 use crate::primitive::{BufferInfo, Variant, VariantMap};
 use crate::HandshakeSerialize;
@@ -18,12 +20,15 @@ pub struct SessionInit {
 
 impl From<VariantMap> for SessionInit {
     fn from(input: VariantMap) -> Self {
-        let state = match_variant!(input.get("SessionState").unwrap(), Variant::VariantMap);
+        use crate::message::signalproxy::Network;
+        let state: VariantMap = input.get("SessionState").unwrap().try_into().unwrap();
+
+        log::trace!("sessionstate: {:#?}", state);
+
         SessionInit {
-            identities: match_variant!(state.get("Identities").unwrap(), Variant::VariantList)
-                .iter()
-                .map(|ident| Identity::from(match_variant!(ident, Variant::VariantMap)))
-                .collect(),
+            identities: Vec::<Identity>::from_network(
+                &mut state.get("Identities").unwrap().try_into().unwrap(),
+            ),
             buffers: match_variant!(state.get("BufferInfos").unwrap(), Variant::VariantList)
                 .iter()
                 .map(|buffer| match buffer {
@@ -49,15 +54,15 @@ impl HandshakeSerialize for SessionInit {
             "MsgType".to_string(),
             Variant::String("SessionInit".to_string()),
         );
-        values.insert(
-            "Identities".to_string(),
-            Variant::VariantList(
-                self.identities
-                    .iter()
-                    .map(|ident| Variant::VariantMap(ident.clone().into()))
-                    .collect(),
-            ),
-        );
+        // values.insert(
+        //     "Identities".to_string(),
+        //     Variant::VariantList(
+        //         self.identities
+        //             .iter()
+        //             .map(|ident| Variant::VariantMap(ident.clone().into()))
+        //             .collect(),
+        //     ),
+        // );
         values.insert(
             "BufferInfos".to_string(),
             Variant::VariantList(

@@ -8,7 +8,7 @@ use failure::Error;
 
 use log::trace;
 
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::*, serialize::*};
 
 /// StringList are represented as a Vec of Strings
 ///

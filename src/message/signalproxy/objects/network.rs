@@ -1,16 +1,17 @@
-use crate::primitive::{StringList, Variant, VariantList, VariantMap};
+use std::convert::TryInto;
 
-#[allow(unused_imports)]
+use crate::primitive::{Variant, VariantList, VariantMap};
+
 use libquassel_derive::Network;
 
 use std::collections::HashMap;
 
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 
 use super::{ircchannel::IrcChannel, ircuser::IrcUser, networkinfo::NetworkInfo};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Network {
     my_nick: String,
     latency: i32,
@@ -105,146 +106,104 @@ impl crate::message::signalproxy::Network for Network {
     }
 
     fn from_network(input: &mut Self::Item) -> Self {
-        let users_and_channels = match_variant!(
-            input
-                .iter()
-                .nth(
-                    input
-                        .iter()
-                        .position(|x| *x == Variant::ByteArray(s!("IrcUsersAndChannels")))
-                        .unwrap()
-                )
-                .unwrap(),
-            Variant::VariantMap
-        );
+        let mut i = input.iter().cycle();
 
-        let res = Self {
-            my_nick: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("myNick")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::String
-            ),
-            latency: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("latency")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::i32
-            ),
-            current_server: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("currentServer")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::String
-            ),
-            is_connected: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("isConnected")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::bool
-            ),
-            connection_state: ConnectionState::from_i32(match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("connectionState")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::i32
-            ))
-            .unwrap(),
-            irc_users: match_variant!(
-                users_and_channels.get("Users").unwrap(),
-                Variant::VariantMap
-            )
-            .iter()
-            .map(|(k, v)| (k, IrcUser::from_network(v))),
-            irc_channels: match_variant!(
-                users_and_channels.get("Channels").unwrap(),
-                Variant::VariantMap
-            )
-            .iter()
-            .map(|(k, v)| (k, match_variant!(v, Variant::VariantList))),
-            supports: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("Supports")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::VariantMap
-            )
-            .iter()
-            .map(|(k, v)| (k.clone(), match_variant!(v, Variant::String)))
-            .collect(),
-            caps: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("Caps")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::VariantMap
-            )
-            .iter()
-            .map(|(k, v)| (k.clone(), match_variant!(v, Variant::String)))
-            .collect(),
-            caps_enabled: match_variant!(
-                input
-                    .iter()
-                    .nth(
-                        input
-                            .iter()
-                            .position(|x| *x == Variant::ByteArray(s!("CapsEnabled")))
-                            .unwrap()
-                    )
-                    .unwrap(),
-                Variant::VariantList
-            )
-            .iter()
-            .map(|v| match_variant!(v, Variant::String))
-            .collect(),
-            network_info: NetworkInfo::from_network(input),
+        let users_and_channels: VariantMap = {
+            i.position(|x| *x == Variant::ByteArray(String::from("IrcUsersAndChannels")))
+                .unwrap();
+
+            i.next().unwrap().try_into().unwrap()
         };
 
-        todo!()
+        log::trace!("users and channels: {:#?}", users_and_channels);
+
+        Self {
+            my_nick: {
+                i.position(|x| *x == Variant::ByteArray(String::from("myNick")))
+                    .unwrap();
+
+                i.next().unwrap().try_into().unwrap()
+            },
+            latency: {
+                i.position(|x| *x == Variant::ByteArray(String::from("latency")))
+                    .unwrap();
+
+                i.next().unwrap().try_into().unwrap()
+            },
+            current_server: {
+                i.position(|x| *x == Variant::ByteArray(String::from("currentServer")))
+                    .unwrap();
+
+                i.next().unwrap().try_into().unwrap()
+            },
+            is_connected: {
+                i.position(|x| *x == Variant::ByteArray(String::from("isConnected")))
+                    .unwrap();
+
+                i.next().unwrap().try_into().unwrap()
+            },
+            connection_state: ConnectionState::from_i32({
+                i.position(|x| *x == Variant::ByteArray(String::from("connectionState")))
+                    .unwrap();
+
+                i.next().unwrap().try_into().unwrap()
+            })
+            .unwrap(),
+            irc_users: {
+                let users: Vec<IrcUser> = Vec::<IrcUser>::from_network(
+                    &mut users_and_channels.get("Users").unwrap().try_into().unwrap(),
+                );
+                users
+                    .into_iter()
+                    .map(|user| (user.nick.clone(), user))
+                    .collect()
+            },
+            irc_channels: {
+                let channels: Vec<IrcChannel> = Vec::<IrcChannel>::from_network(
+                    &mut users_and_channels
+                        .get("Channels")
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                );
+                channels
+                    .into_iter()
+                    .map(|channel| (channel.name.clone(), channel))
+                    .collect()
+            },
+            supports: {
+                i.position(|x| *x == Variant::ByteArray(String::from("Supports")))
+                    .unwrap();
+
+                let var: VariantMap = i.next().unwrap().try_into().unwrap();
+
+                var.into_iter()
+                    .map(|(k, v)| (k, v.try_into().unwrap()))
+                    .collect()
+            },
+            caps: {
+                i.position(|x| *x == Variant::ByteArray(String::from("Caps")))
+                    .unwrap();
+
+                let var: VariantMap = i.next().unwrap().try_into().unwrap();
+
+                var.into_iter()
+                    .map(|(k, v)| (k, v.try_into().unwrap()))
+                    .collect()
+            },
+            caps_enabled: {
+                i.position(|x| *x == Variant::ByteArray(String::from("CapsEnabled")))
+                    .unwrap();
+
+                let var: VariantList = i.next().unwrap().try_into().unwrap();
+
+                var.into_iter().map(|v| v.try_into().unwrap()).collect()
+            },
+            network_info: NetworkInfo::from_network(input),
+        }
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Network)]
 #[network(repr = "map")]
 pub struct NetworkServer {
@@ -272,6 +231,27 @@ pub struct NetworkServer {
     pub proxy_user: String,
     #[network(rename = "ProxyPass")]
     pub proxy_pass: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Network)]
+#[network(repr = "list")]
+pub struct NetworkConfig {
+    #[network(rename = "pingTimeoutEnabled")]
+    ping_timeout_enabled: bool,
+    #[network(rename = "pingInterval")]
+    ping_interval: i32,
+    #[network(rename = "maxPingCount")]
+    max_ping_count: i32,
+    #[network(rename = "autoWhoEnabled")]
+    auto_who_enabled: bool,
+    #[network(rename = "autoWhoInterval")]
+    auto_who_interval: i32,
+    #[network(rename = "autoWhoNickLimit")]
+    auto_who_nick_limit: i32,
+    #[network(rename = "autoWhoDelay")]
+    auto_who_delay: i32,
+    #[network(rename = "standardCtcp")]
+    standard_ctcp: bool,
 }
 
 #[cfg(test)]

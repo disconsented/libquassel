@@ -5,7 +5,7 @@ use failure::Error;
 
 use log::trace;
 
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::Variant;
 

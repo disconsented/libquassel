@@ -1,4 +1,6 @@
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::Deserialize, serialize::Serialize};
+
+use num_derive::{FromPrimitive, ToPrimitive};
 
 mod heartbeat;
 mod initdata;
@@ -98,7 +100,7 @@ impl Deserialize for Message {
 /// Type of an SignalProxy Message
 /// The first element in the VariantList that is received
 #[repr(i32)]
-#[derive(Copy, Clone, Debug, std::cmp::PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum MessageType {
     /// Bidirectional
     SyncMessage = 0x00000001,

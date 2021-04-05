@@ -1,9 +1,10 @@
 use std::vec::Vec;
 
+use num_derive::{FromPrimitive, ToPrimitive};
+
 use failure::Error;
 
-use crate::{Deserialize, DeserializeUTF8};
-use crate::{Serialize, SerializeUTF8};
+use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::BufferInfo;
 
@@ -171,8 +172,9 @@ impl Deserialize for Message {
 }
 
 #[repr(i32)]
-#[derive(Copy, Clone, Debug, std::cmp::PartialEq)]
+#[derive(Copy, Clone, Debug, std::cmp::PartialEq, FromPrimitive, ToPrimitive)]
 pub enum MessageType {
+    None = 0x00000000,
     Plain = 0x00000001,
     Notice = 0x00000002,
     Action = 0x00000004,

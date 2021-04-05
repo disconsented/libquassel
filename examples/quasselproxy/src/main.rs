@@ -148,7 +148,7 @@ impl Server {
         tls: bool,
         compression: bool,
     ) -> Result<ConnAck, Error> {
-        use libquassel::Deserialize;
+        use libquassel::deserialize::*;
 
         // Buffer for our initialization
         let mut init: Vec<u8> = vec![];
@@ -217,7 +217,7 @@ impl Server {
     ) -> Result<(), Error> {
         use libquassel::HandshakeDeserialize;
 
-        trace!(target: "message", "Received bytes: {:x?}", buf);
+        trace!(target: "handshakemessage", "Received bytes: {:x?}", buf);
         match HandshakeMessage::parse(buf) {
             Ok((_size, res)) => {
                 info!("{}: {:#?}", direction, res);
@@ -236,8 +236,8 @@ impl Server {
 
     #[tracing::instrument]
     async fn handle_message(buf: &[u8], direction: &str) -> Result<(), Error> {
+        use libquassel::deserialize::*;
         use libquassel::message::Message;
-        use libquassel::Deserialize;
 
         trace!(target: "message", "Received bytes: {:x?}", buf);
 

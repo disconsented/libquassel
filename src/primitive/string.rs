@@ -8,9 +8,7 @@ use failure::Error;
 use log::trace;
 
 use crate::util;
-use crate::{Deserialize, DeserializeUTF8, Serialize, SerializeUTF8};
-
-pub type ByteArray = String;
+use crate::{deserialize::*, serialize::*};
 
 /// We Shadow the String type here as we can only use impl on types in our own scope.
 ///
@@ -21,10 +19,8 @@ impl Serialize for String {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let mut res: Vec<u8> = Vec::new();
 
-        let utf16: Vec<u16> = self.encode_utf16().collect();
-        for i in utf16 {
-            res.extend(i.to_be_bytes().iter());
-        }
+        self.encode_utf16()
+            .for_each(|i| res.extend(i.to_be_bytes().iter()));
 
         util::prepend_byte_len(&mut res);
         return Ok(res);

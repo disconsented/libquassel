@@ -2,8 +2,7 @@ use std::vec::Vec;
 
 use failure::Error;
 
-use crate::{Deserialize, DeserializeUTF8};
-use crate::{Serialize, SerializeUTF8};
+use crate::{deserialize::*, serialize::*};
 
 /// The BufferInfo struct represents a BufferInfo as received in IRC
 ///

@@ -1,7 +1,7 @@
 use crate::message::MessageType;
 use crate::primitive::Message;
 use crate::primitive::{Variant, VariantList};
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::Deserialize, serialize::Serialize};
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub enum RpcCall {

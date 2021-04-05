@@ -7,8 +7,7 @@ use log::{error, trace};
 use crate::error::ProtocolError;
 use crate::primitive;
 use crate::primitive::StringList;
-use crate::{Deserialize, DeserializeUTF8};
-use crate::{Serialize, SerializeUTF8};
+use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::{BufferInfo, Date, DateTime, Message, Time, VariantList, VariantMap};
 
@@ -35,6 +34,7 @@ pub enum Variant {
     DateTime(DateTime),
     VariantMap(VariantMap),
     VariantList(VariantList),
+    #[from(ignore)]
     String(String),
     #[from(ignore)]
     ByteArray(String),
@@ -48,6 +48,32 @@ pub enum Variant {
     i32(i32),
     i16(i16),
     i8(i8),
+}
+
+impl From<Variant> for String {
+    fn from(input: Variant) -> Self {
+        match input {
+            Variant::String(value) => value,
+            Variant::ByteArray(value) => value,
+            _ => panic!("unknown variant expected string or bytearray"),
+        }
+    }
+}
+
+impl From<&Variant> for String {
+    fn from(input: &Variant) -> Self {
+        match input {
+            Variant::String(value) => value.clone(),
+            Variant::ByteArray(value) => value.clone(),
+            _ => panic!("unknown variant expected string or bytearray"),
+        }
+    }
+}
+
+impl From<String> for Variant {
+    fn from(input: String) -> Self {
+        Self::String(input)
+    }
 }
 
 impl Serialize for Variant {

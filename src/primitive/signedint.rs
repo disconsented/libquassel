@@ -6,7 +6,7 @@ use std::vec::Vec;
 
 use failure::Error;
 
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::*, serialize::*};
 
 impl Serialize for i64 {
     fn serialize(&self) -> Result<Vec<u8>, Error> {

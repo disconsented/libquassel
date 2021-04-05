@@ -24,7 +24,7 @@ pub use protocol::*;
 pub use sessioninit::*;
 pub use types::*;
 
-use crate::primitive::{Variant, VariantMap};
+use crate::primitive::VariantMap;
 use crate::{HandshakeDeserialize, HandshakeSerialize};
 
 #[derive(Debug, Clone)]
@@ -56,7 +56,7 @@ impl HandshakeDeserialize for HandshakeMessage {
     fn parse(b: &[u8]) -> Result<(usize, Self), failure::Error> {
         let (size, res) = VariantMap::parse(b)?;
 
-        let msgtype = match_variant!(&res["MsgType"], Variant::String);
+        let msgtype: String = (&res["MsgType"]).into();
         match msgtype.as_str() {
             "ClientInit" => Ok((size, HandshakeMessage::ClientInit(res.into()))),
             "ClientInitAck" => Ok((size, HandshakeMessage::ClientInitAck(res.into()))),

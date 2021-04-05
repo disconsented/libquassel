@@ -7,11 +7,10 @@ use failure::Error;
 use crate::error::ProtocolError;
 use crate::primitive::Variant;
 use crate::util;
-use crate::Deserialize;
-use crate::Serialize;
+use crate::{deserialize::Deserialize, serialize::Serialize};
 
+use crate::message::handshake::{HandshakeDeserialize, HandshakeSerialize};
 use crate::primitive::VariantMap;
-use crate::{HandshakeDeserialize, HandshakeSerialize};
 
 impl HandshakeSerialize for VariantMap {
     fn serialize<'a>(&'a self) -> Result<Vec<u8>, Error> {

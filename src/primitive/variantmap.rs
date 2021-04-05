@@ -5,8 +5,7 @@ use failure::Error;
 
 use log::trace;
 
-use crate::Deserialize;
-use crate::Serialize;
+use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::Variant;
 use crate::util;
@@ -40,11 +39,11 @@ impl Deserialize for VariantMap {
         let mut pos: usize = 4;
         let mut map = VariantMap::new();
         for _ in 0..len {
-            trace!(target: "primitive::VariantMap", "Parsing entry name");
+            trace!(target: "primitive::VariantMap", "Parsing entry name {:x?}", &b[pos..]);
             let (nlen, name) = String::parse(&b[pos..])?;
             pos += nlen;
 
-            trace!(target: "primitive::VariantMap", "Parsing entry: {:?} with len {:?}", name, &b[(pos)..(pos + 4)]);
+            trace!(target: "primitive::VariantMap", "Parsing entry: {:?} with type {:x?}", name, &b[(pos)..(pos + 4)]);
             let (vlen, value) = Variant::parse(&b[(pos)..])?;
             pos += vlen;
 

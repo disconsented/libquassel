@@ -1,56 +1,39 @@
-use std::collections::HashMap;
-
-use crate::primitive::{DateTime, StringList, Variant, VariantMap};
+use crate::primitive::{DateTime, StringList};
 
 #[allow(unused_imports)]
 use crate::message::signalproxy::Network;
 use libquassel_derive::Network;
 
-impl Network for Vec<IrcUser> {
-    type Item = VariantMap;
-
-    fn to_network(&self) -> Self::Item {
-        Variant::VariantMap(self.iter().fold(HashMap::new(), |mut res, v| {
-            res.extend(v.to_network());
-
-            res
-        }))
-    }
-    fn from_network(input: &mut Self::Item) -> Self {
-        todo!()
-    }
-}
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Network)]
 #[network(repr = "maplist")]
 pub struct IrcUser {
-    user: String,
-    host: String,
-    nick: String,
+    pub user: String,
+    pub host: String,
+    pub nick: String,
     #[network(rename = "realName")]
-    real_name: String,
-    account: String,
-    away: bool,
+    pub real_name: String,
+    pub account: String,
+    pub away: bool,
     #[network(rename = "awayMessage")]
-    away_message: String,
+    pub away_message: String,
     #[network(rename = "idleTime")]
-    idle_time: DateTime,
+    pub idle_time: DateTime,
     #[network(rename = "loginTime")]
-    login_time: DateTime,
-    server: String,
+    pub login_time: DateTime,
+    pub server: String,
     #[network(rename = "ircOperator")]
-    irc_operator: String,
+    pub irc_operator: String,
     #[network(rename = "lastAwayMessageTime")]
-    last_away_message_time: DateTime,
+    pub last_away_message_time: DateTime,
     #[network(rename = "whoisServiceReply")]
-    whois_service_reply: String,
+    pub whois_service_reply: String,
     #[network(rename = "suserHost")]
-    suser_host: String,
-    encrypted: bool,
-    channels: StringList,
+    pub suser_host: String,
+    pub encrypted: bool,
+    pub channels: StringList,
     #[network(rename = "userModes")]
-    user_modes: String,
+    pub user_modes: String,
 }
 
 #[cfg(test)]

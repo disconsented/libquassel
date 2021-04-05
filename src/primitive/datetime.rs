@@ -1,5 +1,4 @@
-use crate::Deserialize;
-use crate::Serialize;
+use crate::{deserialize::*, serialize::*};
 
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 

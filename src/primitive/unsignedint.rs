@@ -8,7 +8,7 @@ use std::vec::Vec;
 use failure::Error;
 
 use crate::error::ProtocolError;
-use crate::{Deserialize, Serialize};
+use crate::{deserialize::*, serialize::*};
 
 impl Serialize for bool {
     fn serialize(&self) -> Result<Vec<u8>, Error> {

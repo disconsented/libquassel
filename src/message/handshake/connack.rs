@@ -29,7 +29,7 @@ impl Default for ConnAck {
     }
 }
 
-impl crate::Serialize for ConnAck {
+impl crate::serialize::Serialize for ConnAck {
     fn serialize(&self) -> Result<Vec<std::primitive::u8>, Error> {
         let mut bytes: Vec<u8> = Vec::new();
 
@@ -41,7 +41,7 @@ impl crate::Serialize for ConnAck {
     }
 }
 
-impl crate::Deserialize for ConnAck {
+impl crate::deserialize::Deserialize for ConnAck {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
         let (flen, flags) = u8::parse(b)?;
         let (elen, extra) = i16::parse(&b[flen..])?;
