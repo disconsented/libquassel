@@ -150,26 +150,32 @@ impl crate::message::signalproxy::Network for Network {
             })
             .unwrap(),
             irc_users: {
-                let users: Vec<IrcUser> = Vec::<IrcUser>::from_network(
-                    &mut users_and_channels.get("Users").unwrap().try_into().unwrap(),
-                );
-                users
-                    .into_iter()
-                    .map(|user| (user.nick.clone(), user))
-                    .collect()
+                match users_and_channels.get("Users") {
+                    Some(users) => {
+                        let users: Vec<IrcUser> = Vec::<IrcUser>::from_network(
+                            &mut users.try_into().expect("failed to convert Users"),
+                        );
+
+                        users
+                            .into_iter()
+                            .map(|user| (user.nick.clone(), user))
+                            .collect()
+                    }
+                    None => HashMap::new(),
+                }
             },
             irc_channels: {
-                let channels: Vec<IrcChannel> = Vec::<IrcChannel>::from_network(
-                    &mut users_and_channels
-                        .get("Channels")
-                        .unwrap()
-                        .try_into()
-                        .unwrap(),
-                );
-                channels
-                    .into_iter()
-                    .map(|channel| (channel.name.clone(), channel))
-                    .collect()
+                match users_and_channels.get("Channels") {
+                    Some(channels) => {
+                        let channels: Vec<IrcChannel> =
+                            Vec::<IrcChannel>::from_network(&mut channels.try_into().unwrap());
+                        channels
+                            .into_iter()
+                            .map(|channel| (channel.name.clone(), channel))
+                            .collect()
+                    }
+                    None => HashMap::new(),
+                }
             },
             supports: {
                 i.position(|x| *x == Variant::ByteArray(String::from("Supports")))
