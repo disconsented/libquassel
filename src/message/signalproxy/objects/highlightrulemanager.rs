@@ -6,7 +6,7 @@ use num_traits::{FromPrimitive, ToPrimitive};
 #[derive(Debug, Clone, PartialEq, Network)]
 #[network(repr = "list")]
 pub struct HighlightRuleManager {
-    #[network(rename = "highlightRuleList", network, variant = "VariantMap")]
+    #[network(rename = "HighlightRuleList", network, variant = "VariantMap")]
     highlight_rule_list: Vec<HighlightRule>,
     #[network(rename = "highlightNick", network, variant = "i32")]
     highlight_nick: HighlightNickType,
@@ -63,7 +63,7 @@ mod tests {
 
     fn get_network() -> VariantList {
         vec![
-            Variant::ByteArray(s!("highlightRuleList")),
+            Variant::ByteArray(s!("HighlightRuleList")),
             Variant::VariantMap(map! {
                 s!("isInverse") => Variant::VariantList(vec![Variant::bool(false)]),
                 s!("isEnabled") => Variant::VariantList(vec![Variant::bool(true)]),
