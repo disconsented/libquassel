@@ -5,6 +5,7 @@ mod certmanager;
 mod coreinfo;
 mod highlightrulemanager;
 mod identity;
+mod ignorelistmanager;
 mod ircchannel;
 mod ircuser;
 mod network;
@@ -19,6 +20,7 @@ pub use certmanager::*;
 pub use coreinfo::*;
 pub use highlightrulemanager::*;
 pub use identity::*;
+pub use ignorelistmanager::*;
 pub use ircchannel::*;
 pub use ircuser::*;
 pub use network::*;
@@ -35,6 +37,7 @@ pub enum Types {
     BufferSyncer(BufferSyncer),
     BufferViewConfig(BufferViewConfig),
     BufferViewManager(BufferViewManager),
+    IgnoreListManager(IgnoreListManager),
     CertManager(CertManager),
     Network(network::Network),
     NetworkInfo(NetworkInfo),
@@ -51,6 +54,7 @@ impl Types {
             Types::BufferSyncer(val) => val.to_network(),
             Types::BufferViewConfig(val) => val.to_network(),
             Types::BufferViewManager(val) => val.to_network(),
+            Types::IgnoreListManager(val) => val.to_network(),
             Types::CertManager(val) => val.to_network(),
             Types::Network(val) => val.to_network(),
             Types::NetworkInfo(val) => val.to_network(),
@@ -76,6 +80,7 @@ impl Types {
             "CoreData" => Types::CoreData(CoreData::from_network(
                 &mut input.remove(0).try_into().unwrap(),
             )),
+            "IgnoreListManager" => Types::IgnoreListManager(IgnoreListManager::from_network(input)),
             "CertManager" => Types::CertManager(CertManager::from_network(input)),
             _ => Types::Unknown(input.to_owned()),
         }
