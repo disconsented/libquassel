@@ -1,7 +1,8 @@
-use std::vec::Vec;
+use std::{collections::HashMap, vec::Vec};
 
 use failure::Error;
 
+use itertools::Itertools;
 use log::{error, trace};
 
 use crate::error::ProtocolError;
@@ -73,6 +74,70 @@ impl From<&Variant> for String {
 impl From<String> for Variant {
     fn from(input: String) -> Self {
         Self::String(input)
+    }
+}
+
+/// Implements the Network trait genericly for everything that
+/// can be a VariantList / Vec<T>
+impl<T> crate::message::Network for Vec<T>
+where
+    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone,
+{
+    type Item = super::VariantList;
+
+    fn to_network(&self) -> Self::Item {
+        self.iter().map(|i| (*i).clone().into()).collect()
+    }
+
+    fn from_network(input: &mut Self::Item) -> Self {
+        input
+            .iter()
+            .map(|i| match T::try_from(i.clone()) {
+                Ok(it) => it,
+                // TODO handle error
+                _ => unreachable!(),
+            })
+            .collect()
+    }
+}
+
+/// Implements the Network trait genericly for everything that
+/// can be a VariantList / Vec<T>
+impl<T, S> crate::message::Network for HashMap<T, S>
+where
+    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
+    S: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
+{
+    type Item = super::VariantList;
+
+    fn to_network(&self) -> Self::Item {
+        let mut res = Vec::with_capacity(self.len() * 2);
+
+        self.iter().for_each(|(k, v)| {
+            res.push((*k).clone().into());
+            res.push((*v).clone().into());
+        });
+
+        return res;
+    }
+
+    fn from_network(input: &mut Self::Item) -> Self {
+        let mut res = HashMap::with_capacity(input.len() / 2);
+
+        input.iter().tuples().for_each(|(k, v)| {
+            res.insert(
+                match T::try_from(k.clone()) {
+                    Ok(it) => it,
+                    _ => unreachable!(),
+                },
+                match S::try_from(v.clone()) {
+                    Ok(it) => it,
+                    _ => unreachable!(),
+                },
+            );
+        });
+
+        return res;
     }
 }
 
