@@ -18,6 +18,9 @@ pub struct Network {
     repr: Repr,
 }
 
+/// List:
+/// Map:
+/// Maplist:
 #[derive(Debug, Clone, Copy, FromMeta)]
 #[darling(default)]
 pub enum Repr {
@@ -182,13 +185,7 @@ fn get_field_type(field: &NetworkField) -> syn::Type {
 fn get_field_variant_type(field: &NetworkField) -> syn::Type {
     match &field.variant {
         Some(ty) => gen_type(&ty),
-        None => {
-            if let Some(override_type) = &field.override_type {
-                gen_type(override_type)
-            } else {
-                field.ty.clone()
-            }
-        }
+        None => get_field_type(field),
     }
 }
 
