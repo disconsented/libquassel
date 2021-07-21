@@ -1,12 +1,12 @@
-use std::vec::Vec;
-
-use num_derive::{FromPrimitive, ToPrimitive};
+use std::{collections::HashMap, convert::TryInto, vec::Vec};
 
 use failure::Error;
 
 use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::BufferInfo;
+
+use super::Variant;
 
 /// The Message struct represents a Message as received in IRC
 ///
@@ -68,7 +68,7 @@ impl Serialize for Message {
         #[cfg(not(feature = "long-time"))]
         values.append(&mut i32::serialize(&(self.timestamp as i32))?);
 
-        values.append(&mut i32::serialize(&(self.msg_type as i32))?);
+        values.append(&mut i32::serialize(&(self.msg_type.bits()))?);
         values.append(&mut i8::serialize(&(self.flags as i8))?);
         values.append(&mut BufferInfo::serialize(&self.buffer)?);
         values.append(&mut String::serialize_utf8(&self.sender)?);
@@ -155,7 +155,7 @@ impl Deserialize for Message {
             Self {
                 msg_id,
                 timestamp,
-                msg_type: MessageType::from(msg_type),
+                msg_type: MessageType::from_bits(msg_type).unwrap(),
                 flags,
                 buffer,
                 sender,
@@ -171,55 +171,93 @@ impl Deserialize for Message {
     }
 }
 
-#[repr(i32)]
-#[derive(Copy, Clone, Debug, std::cmp::PartialEq, FromPrimitive, ToPrimitive)]
-pub enum MessageType {
-    None = 0x00000000,
-    Plain = 0x00000001,
-    Notice = 0x00000002,
-    Action = 0x00000004,
-    Nick = 0x00000008,
-    Mode = 0x00000010,
-    Join = 0x00000020,
-    Part = 0x00000040,
-    Quit = 0x00000080,
-    Kick = 0x00000100,
-    Kill = 0x00000200,
-    Server = 0x00000400,
-    Info = 0x00000800,
-    Error = 0x00001000,
-    DayChange = 0x00002000,
-    Topic = 0x00004000,
-    NetsplitJoin = 0x00008000,
-    NetsplitQuit = 0x00010000,
-    Invite = 0x00020000,
-    Markerline = 0x00040000,
+// #[repr(i32)]
+// #[derive(Copy, Clone, Debug, std::cmp::PartialEq, FromPrimitive, ToPrimitive)]
+// pub enum MessageType {
+//     None = 0x00000000,
+//     Plain = 0x00000001,
+//     Notice = 0x00000002,
+//     Action = 0x00000004,
+//     Nick = 0x00000008,
+//     Mode = 0x00000010,
+//     Join = 0x00000020,
+//     Part = 0x00000040,
+//     Quit = 0x00000080,
+//     Kick = 0x00000100,
+//     Kill = 0x00000200,
+//     Server = 0x00000400,
+//     Info = 0x00000800,
+//     Error = 0x00001000,
+//     DayChange = 0x00002000,
+//     Topic = 0x00004000,
+//     NetsplitJoin = 0x00008000,
+//     NetsplitQuit = 0x00010000,
+//     Invite = 0x00020000,
+//     Markerline = 0x00040000,
+// }
+use bitflags::bitflags;
+
+bitflags! {
+    pub struct MessageType: i32 {
+        const NONE = 0x00000000;
+        const PLAIN = 0x00000001;
+        const NOTICE = 0x00000002;
+        const ACTION = 0x00000004;
+        const NICK = 0x00000008;
+        const MODE = 0x00000010;
+        const JOIN = 0x00000020;
+        const PART = 0x00000040;
+        const QUIT = 0x00000080;
+        const KICK = 0x00000100;
+        const KILL = 0x00000200;
+        const SERVER = 0x00000400;
+        const INFO = 0x00000800;
+        const ERROR = 0x00001000;
+        const DAY_CHANGE = 0x00002000;
+        const TOPIC = 0x00004000;
+        const NETSPLIT_JOIN = 0x00008000;
+        const NETSPLIT_QUIT = 0x00010000;
+        const INVITE = 0x00020000;
+        const MARKERLINE = 0x00040000;
+    }
 }
 
-impl From<i32> for MessageType {
-    fn from(val: i32) -> Self {
-        match val {
-            0x00000001 => MessageType::Plain,
-            0x00000002 => MessageType::Notice,
-            0x00000004 => MessageType::Action,
-            0x00000008 => MessageType::Nick,
-            0x00000010 => MessageType::Mode,
-            0x00000020 => MessageType::Join,
-            0x00000040 => MessageType::Part,
-            0x00000080 => MessageType::Quit,
-            0x00000100 => MessageType::Kick,
-            0x00000200 => MessageType::Kill,
-            0x00000400 => MessageType::Server,
-            0x00000800 => MessageType::Info,
-            0x00001000 => MessageType::Error,
-            0x00002000 => MessageType::DayChange,
-            0x00004000 => MessageType::Topic,
-            0x00008000 => MessageType::NetsplitJoin,
-            0x00010000 => MessageType::NetsplitQuit,
-            0x00020000 => MessageType::Invite,
-            0x00040000 => MessageType::Markerline,
-            _ => unimplemented!(),
-        }
+impl<T> crate::message::Network for HashMap<T, MessageType>
+where
+    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
+{
+    type Item = super::VariantList;
+
+    fn to_network(&self) -> Self::Item {
+        let mut res = Vec::with_capacity(self.len() * 2);
+
+        self.iter().for_each(|(k, v)| {
+            res.push((*k).clone().into());
+            res.push((*v).clone().bits().into());
+        });
+
+        return res;
+    }
+
+    fn from_network(input: &mut Self::Item) -> Self {
+        use itertools::Itertools;
+
+        let mut res = HashMap::with_capacity(input.len() / 2);
+
+        input.iter().tuples().for_each(|(k, v)| {
+            res.insert(
+                match T::try_from(k.clone()) {
+                    Ok(it) => it,
+                    _ => unreachable!(),
+                },
+                {
+                    let typ = v.try_into().expect("failed to get from variant");
+                    MessageType::from_bits(typ).expect("failed to get messagetype from i32")
+                },
+            );
+        });
+
+        return res;
     }
 }
 
@@ -234,7 +272,7 @@ mod tests {
         let message = Message {
             msg_id: 1,
             timestamp: 1609846597,
-            msg_type: MessageType::Plain,
+            msg_type: MessageType::PLAIN,
             flags: 0,
             buffer: BufferInfo {
                 id: 1,
@@ -268,7 +306,7 @@ mod tests {
         let message = Message {
             msg_id: 1,
             timestamp: 1609846597,
-            msg_type: MessageType::Plain,
+            msg_type: MessageType::PLAIN,
             flags: 0,
             buffer: BufferInfo {
                 id: 1,
