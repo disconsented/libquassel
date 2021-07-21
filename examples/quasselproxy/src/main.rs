@@ -1,3 +1,8 @@
+/// quasselproxy
+///
+/// A simple inspection proxy for the quassel protocol
+///
+/// cargo run -- <core host>:<port> <user> <pass>
 use failure::Error;
 
 use std::result::Result;

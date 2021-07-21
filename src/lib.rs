@@ -1,7 +1,6 @@
 #![feature(test)]
-#![feature(external_doc)]
 #![feature(doc_cfg)]
-#![doc(include = "../README.md")]
+#[doc = include_str!("../README.md")]
 #[cfg_attr(docsrs, feature(doc_cfg))]
 #[macro_use]
 mod util;

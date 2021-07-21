@@ -60,7 +60,7 @@ pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     fn try_from(input: #enum_name) -> Result<Self, Self::Error> {
                         match input {
                             #enum_name::#variant(input) => Ok(input),
-                            v => Err(format!("variant::from: {} wrong variant expected: {:?}", #inner_type_str, v)),
+                            v => Err(format!("variant::from: wrong variant, expected: {}, got: {:?}", #inner_type_str, v)),
                         }
                     }
                 }
@@ -71,7 +71,7 @@ pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     fn try_from(input: &#enum_name) -> Result<Self, Self::Error> {
                         match input {
                             #enum_name::#variant(input) => Ok(input.clone()),
-                            v => Err(format!("variant::from: {} wrong variant expected: {:?}", #inner_type_str, v)),
+                            v => Err(format!("variant::from: wrong variant, expected: {}, got: {:?}", #inner_type_str, v)),
                         }
                     }
                 }
