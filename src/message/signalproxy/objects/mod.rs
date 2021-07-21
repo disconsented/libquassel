@@ -1,5 +1,6 @@
 mod aliasmanager;
 mod buffersyncer;
+mod bufferview;
 mod coreinfo;
 mod highlightrulemanager;
 mod identity;
@@ -12,6 +13,7 @@ use std::convert::TryInto;
 
 pub use aliasmanager::*;
 pub use buffersyncer::*;
+pub use bufferview::*;
 pub use coreinfo::*;
 pub use highlightrulemanager::*;
 pub use identity::*;
@@ -29,6 +31,8 @@ use crate::primitive::VariantList;
 pub enum Types {
     AliasManager(AliasManager),
     BufferSyncer(BufferSyncer),
+    BufferViewConfig(BufferViewConfig),
+    BufferViewManager(BufferViewManager),
     Network(network::Network),
     NetworkInfo(NetworkInfo),
     NetworkConfig(NetworkConfig),
@@ -42,6 +46,8 @@ impl Types {
         match self {
             Types::AliasManager(val) => val.to_network(),
             Types::BufferSyncer(val) => val.to_network(),
+            Types::BufferViewConfig(val) => val.to_network(),
+            Types::BufferViewManager(val) => val.to_network(),
             Types::Network(val) => val.to_network(),
             Types::NetworkInfo(val) => val.to_network(),
             Types::NetworkConfig(val) => val.to_network(),
@@ -61,6 +67,8 @@ impl Types {
             "NetworkConfig" => Types::NetworkConfig(NetworkConfig::from_network(input)),
             "AliasManager" => Types::AliasManager(AliasManager::from_network(input)),
             "BufferSyncer" => Types::BufferSyncer(BufferSyncer::from_network(input)),
+            "BufferViewConfig" => Types::BufferViewConfig(BufferViewConfig::from_network(input)),
+            "BufferViewManager" => Types::BufferViewManager(BufferViewManager::from_network(input)),
             "CoreData" => Types::CoreData(CoreData::from_network(
                 &mut input.remove(0).try_into().unwrap(),
             )),
