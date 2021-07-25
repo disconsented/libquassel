@@ -4,10 +4,10 @@ use crate::{deserialize::Deserialize, serialize::Serialize};
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct SyncMessage {
-    class_name: String,
-    object_name: String,
-    slot_name: String,
-    params: VariantList,
+    pub class_name: String,
+    pub object_name: String,
+    pub slot_name: String,
+    pub params: VariantList,
 }
 
 // impl Act for SyncMessage {}

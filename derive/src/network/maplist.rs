@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::network::get_field_variant_type;
 
-use super::{get_field_type, NetworkField};
+use super::NetworkField;
 
 pub(crate) fn to(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
     fields
@@ -167,7 +167,7 @@ pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>) -> TokenSt
 
     let _field_name = field.ident.as_ref().unwrap();
 
-    let field_type = get_field_variant_type(field);
+    let _field_type = get_field_variant_type(field);
 
     let field_variant = match &field.variant {
         None => quote! {crate::primitive::VariantList},

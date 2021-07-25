@@ -1,10 +1,5 @@
 use libquassel_derive::Network;
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto},
-};
-
-use crate::primitive::{Variant, VariantList};
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone, PartialEq, Network)]
 #[network(repr = "list")]

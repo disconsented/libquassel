@@ -38,6 +38,10 @@ framing = ["tokio", "tokio-util", "flate2", "bytes"]
 # Enable all the quassel features
 all-quassel-features = ["long-message-id", "long-time", "rich-messages", "sender-prefixes", "authenticators"]
 
+# Either act as a client or a server
+client = []
+server = []
+
 # Serialize message IDs as i64
 long-message-id = []
 # Serialize Message Time as i64
@@ -50,7 +54,7 @@ sender-prefixes = []
 authenticators = []
 
 
-default = []
+default = ["client"]
 
 [package.metadata.docs.rs]
 # document all features

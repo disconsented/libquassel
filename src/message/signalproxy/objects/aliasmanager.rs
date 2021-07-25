@@ -1,5 +1,10 @@
 use libquassel_derive::Network;
 
+use crate::message::{StatefulSyncable, SyncProxy, Syncable};
+
+/// AliasManager
+/// keeps a list of all registered aliases
+/// syncable
 #[derive(Clone, Debug, std::cmp::PartialEq, Network)]
 #[network(repr = "list")]
 pub struct AliasManager {
@@ -7,6 +12,24 @@ pub struct AliasManager {
     pub aliases: Vec<Alias>,
 }
 
+impl AliasManager {
+    pub fn add_alias(&mut self, alias: Alias) {
+        // TODO check if name is equal
+        if !self.aliases.contains(&alias) {
+            self.aliases.push(alias)
+        }
+    }
+}
+
+impl StatefulSyncable for AliasManager {}
+impl Syncable for AliasManager {
+    fn sync(&self, session: impl SyncProxy, function: &str, params: crate::primitive::VariantList) {
+        session.sync("AliasManager", None, function, params)
+    }
+}
+
+/// Alias
+/// Represents a signle alias
 #[derive(Clone, Debug, std::cmp::PartialEq, Network)]
 #[network(repr = "maplist")]
 pub struct Alias {
@@ -78,37 +101,3 @@ mod tests {
         assert_eq!(AliasManager::from_network(&mut get_dest()), get_src())
     }
 }
-
-// impl AliasManager {
-//     /// Client to Server
-//     ///
-//     /// Replaces all properties of the object with the content of the
-//     /// "properties" parameter. This parameter is in network representation.
-//     ///
-//     fn request_update(self: &mut Self, properties: VariantMap) {
-//         self.update(properties);
-//     }
-
-//     /// Server to Client
-//     fn add_alias(self: &mut Self, name: String, expansion: String) {
-//         self.aliases.push(Alias { name, expansion });
-//     }
-
-//     /// Server to Client
-//     ///
-//     /// Replaces all properties of the object with the content of the
-//     /// "properties" parameter. This parameter is in network representation.
-//     ///
-//     fn update(self: &mut Self, properties: VariantMap) {
-//         let mut alias: Vec<Alias> = Vec::new();
-
-//         // for (i, name) in match_variant!(properties[&"Aliases".to_string()], Variant::String) {
-//         //     alias.push(Alias {
-//         //         name,
-//         //         expansion: match_variant!(properties["Aliases"], Variant::String)["expansions"][i],
-//         //     })
-//         // }
-
-//         self.aliases = alias
-//     }
-// }

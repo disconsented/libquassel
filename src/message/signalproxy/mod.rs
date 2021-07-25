@@ -1,4 +1,11 @@
-use crate::{deserialize::Deserialize, serialize::Serialize};
+use std::convert::TryInto;
+
+use crate::{
+    deserialize::Deserialize,
+    primitive::{VariantList, VariantMap},
+    serialize::Serialize,
+    session::Session,
+};
 
 use num_derive::{FromPrimitive, ToPrimitive};
 
@@ -17,6 +24,77 @@ pub use initdata::*;
 pub use initrequest::*;
 pub use rpccall::*;
 pub use syncmessage::*;
+
+/// SyncProxy sends sync and rpc messages
+pub trait SyncProxy: Session {
+    fn sync(
+        &self,
+        class_name: &str,
+        object_name: Option<&str>,
+        function: &str,
+        params: VariantList,
+    );
+
+    /// Send a RpcCall
+    fn rpc(&self, function: &str, params: VariantList);
+}
+
+/// A base Syncable Object
+pub trait Syncable {
+    /// Send a SyncMessage.
+    ///
+    /// Must implement a call to session.sync() that sets the class and object names
+    ///
+    /// Example:
+    /// ```ignore
+    /// impl Syncable for AliasManager {
+    /// fn sync(&self, session: impl SyncProxy, function: &str, params: VariantList) {
+    /// session.sync("AliasManager", None, function, params)
+    /// }
+    /// }
+    /// ```
+    fn sync(&self, session: impl SyncProxy, function: &str, params: VariantList);
+
+    /// Send a RpcCall
+    fn rpc(&self, session: impl SyncProxy, function: &str, params: VariantList) {
+        session.rpc(function, params);
+    }
+}
+
+// TODO handle client vs server with feature flag
+/// A Stateful Syncable Object
+#[allow(unused_variables)]
+pub trait StatefulSyncable: Syncable {
+    /// Client -> Server: Update the whole object with received data
+    fn update(&mut self, session: impl SyncProxy, params: VariantMap)
+    where
+        Self: Sized + From<VariantMap>,
+    {
+        #[cfg(feature = "client")]
+        {
+            self.sync(session, "update", vec![params.into()]);
+        }
+        #[cfg(feature = "server")]
+        {
+            *self = params.try_into().unwrap();
+        }
+    }
+
+    /// Server -> Client: Update the whole object with received data
+    fn request_update(&mut self, session: impl SyncProxy, params: VariantMap)
+    where
+        Self: Sized + From<VariantMap>,
+    {
+        #[cfg(feature = "client")]
+        {
+            *self = params.try_into().unwrap();
+        }
+        #[cfg(feature = "server")]
+        {
+            self.sync(session, "requestUpdate", vec![params.into()]);
+        }
+    }
+}
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub enum Message {
