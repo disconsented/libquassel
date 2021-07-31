@@ -16,7 +16,7 @@ macro_rules! match_variant {
             $x(x) => Ok(x.clone()),
             err => Err(err),
         }
-        .unwrap();
+        .unwrap()
     };
 }
 
