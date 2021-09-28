@@ -6,9 +6,9 @@ use super::objects::Types;
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub struct InitData {
-    class_name: String,
-    object_name: String,
-    init_data: Types,
+    pub class_name: String,
+    pub object_name: String,
+    pub init_data: Types,
 }
 
 impl Serialize for InitData {
