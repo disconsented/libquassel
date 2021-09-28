@@ -15,12 +15,14 @@ impl Init {
         }
     }
 
-    pub fn compression(mut self, v: bool) {
-        self.compression = v
+    pub fn compression(mut self, v: bool) -> Self {
+        self.compression = v;
+        self
     }
 
-    pub fn tls(mut self, v: bool) {
-        self.tls = v
+    pub fn tls(mut self, v: bool) -> Self {
+        self.tls = v;
+        self
     }
 
     pub fn serialize(self) -> Vec<u8> {
