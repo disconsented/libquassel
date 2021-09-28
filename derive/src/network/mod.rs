@@ -15,6 +15,7 @@ pub struct Network {
     attrs: Vec<syn::Attribute>,
     /// Representation to choose for the network format
     /// see Repr enum
+    #[darling(default)]
     repr: Repr,
 }
 
@@ -22,7 +23,6 @@ pub struct Network {
 /// Map:
 /// Maplist:
 #[derive(Debug, Clone, Copy, FromMeta)]
-#[darling(default)]
 pub enum Repr {
     List,
     Map,
@@ -31,24 +31,9 @@ pub enum Repr {
 
 impl Default for Repr {
     fn default() -> Self {
-        Repr::List
+        Repr::Map
     }
 }
-
-// #[derive(Debug, Clone, Copy, FromMeta)]
-// #[darling(default)]
-// pub enum Variant {
-//     Variantlist,
-//     Stringlist,
-//     Variantmap,
-//     Default,
-// }
-
-// impl Default for Variant {
-//     fn default() -> Self {
-//         Self::Default
-//     }
-// }
 
 #[derive(Debug, FromField)]
 #[darling(attributes(network))]
@@ -60,6 +45,8 @@ pub struct NetworkField {
     rename: Option<String>,
     #[darling(default)]
     override_type: Option<String>,
+    #[darling(default, rename = "type")]
+    typ: Option<String>,
     /// Variant to encapsulate this field
     /// VariantList (default) or StringList
     #[darling(default)]
@@ -70,14 +57,8 @@ pub struct NetworkField {
     network: bool,
 }
 
-pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as syn::DeriveInput);
-    // println!("{:#?}", input);
-
-    let network = Network::from_derive_input(&input).unwrap();
-    // println!("{:#?}", network);
-
-    let fields: Vec<NetworkField> = match &input.data {
+fn parse_fields(input: &syn::DeriveInput) -> Vec<NetworkField> {
+    match &input.data {
         syn::Data::Struct(data) => match &data.fields {
             syn::Fields::Named(fields) => fields
                 .named
@@ -87,7 +68,90 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             _ => panic!("network: not a named field"),
         },
         _ => panic!("network: not a Struct"),
+    }
+}
+
+pub fn network_map(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+
+    let network = Network::from_derive_input(&input).unwrap();
+
+    let fields = parse_fields(&input);
+
+    let name = &input.ident;
+
+    let to_network_map = match network.repr {
+        Repr::Maplist => maplist::to(&fields),
+        Repr::Map | _ => map::to(&fields),
     };
+
+    let from_network_map = match network.repr {
+        Repr::Maplist => maplist::from(&fields),
+        Repr::Map | _ => map::from(&fields),
+    };
+
+    let gen = quote! {
+        impl crate::message::signalproxy::NetworkMap for #name {
+            fn to_network_map(&self) -> VariantMap {
+                let mut res = VariantMap::new();
+
+                #(#to_network_map)*
+
+                return res;
+            }
+
+            fn from_network_map(input: &mut VariantMap) -> Self {
+                Self {
+                    #(#from_network_map)*
+                }
+            }
+        }
+    };
+
+    gen.into()
+}
+
+pub fn network_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+
+    let network = Network::from_derive_input(&input).unwrap();
+
+    let fields = parse_fields(&input);
+
+    let name = &input.ident;
+
+    let to_network_list = list::to(&fields);
+    let from_network_list = list::from(&fields);
+
+    let gen = quote! {
+        impl crate::message::signalproxy::NetworkList for #name {
+            fn to_network_list(&self) -> VariantList {
+                let mut res = VariantList::new();
+
+                #(#to_network_list)*
+
+                return res;
+            }
+
+            fn from_network_list(input: &mut VariantList) -> Self {
+                Self {
+                    #(#from_network_list)*
+                }
+            }
+        }
+    };
+
+    gen.into()
+}
+
+pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    // println!("{:#?}", input);
+
+    let network = Network::from_derive_input(&input).unwrap();
+    // println!("{:#?}", network);
+
+    let fields = parse_fields(&input);
 
     // println!("{:#?}", fields);
 
@@ -177,6 +241,8 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 fn get_field_type(field: &NetworkField) -> syn::Type {
     if let Some(override_type) = &field.override_type {
         gen_type(override_type)
+    } else if let Some(typ) = &field.typ {
+        gen_type(typ)
     } else {
         field.ty.clone()
     }
