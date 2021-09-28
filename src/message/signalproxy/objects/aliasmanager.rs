@@ -1,8 +1,10 @@
+use std::convert::TryInto;
+
 use libquassel_derive::{Network, NetworkList, NetworkMap};
 
 use crate::message::{StatefulSyncable, SyncProxy, Syncable};
 
-use crate::message::signalproxy::translation::Network;
+use crate::message::signalproxy::translation::{Network, NetworkMap};
 use crate::primitive::{VariantList, VariantMap};
 
 /// AliasManager
@@ -22,6 +24,23 @@ impl AliasManager {
             self.aliases.push(alias)
         }
     }
+
+    pub fn handle_syncmessage(
+        &mut self,
+        session: impl SyncProxy,
+        msg: crate::message::SyncMessage,
+    ) {
+        match msg.slot_name.as_str() {
+            "requestUpdate" => {
+                self.request_update(session, msg.params.get(0).unwrap().try_into().unwrap())
+            }
+            "update" => {
+                *self =
+                    AliasManager::from_network_map(&mut msg.params[0].clone().try_into().unwrap())
+            }
+            _ => (),
+        }
+    }
 }
 
 impl StatefulSyncable for AliasManager {}
@@ -37,15 +56,15 @@ impl Syncable for AliasManager {
 #[network(repr = "maplist")]
 pub struct Alias {
     #[network(rename = "names", variant = "StringList")]
-    name: String,
+    pub name: String,
     #[network(rename = "expansions", variant = "StringList")]
-    expansion: String,
+    pub expansion: String,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::signalproxy::translation::Network;
+    use crate::message::signalproxy::translation::NetworkList;
 
     use crate::primitive::{Variant, VariantList};
 
