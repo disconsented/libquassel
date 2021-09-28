@@ -29,7 +29,7 @@ pub use networkinfo::*;
 use libquassel_derive::From;
 use log::debug;
 
-use super::{Network, NetworkList, NetworkMap};
+use super::{Network, NetworkList};
 use crate::primitive::VariantList;
 
 /// Central Enum containing and identifying all Quassel Protocol Types:

@@ -26,7 +26,7 @@ pub use rpccall::*;
 pub use syncmessage::*;
 
 /// SyncProxy sends sync and rpc messages
-pub trait SyncProxy: Session {
+pub trait SyncProxy {
     fn sync(
         &self,
         class_name: &str,
@@ -63,34 +63,34 @@ pub trait Syncable {
 
 /// A Stateful Syncable Object
 #[allow(unused_variables)]
-pub trait StatefulSyncable: Syncable {
+pub trait StatefulSyncable: Syncable + translation::NetworkMap {
     /// Client -> Server: Update the whole object with received data
-    fn update(&mut self, session: impl SyncProxy, params: VariantMap)
+    fn update(&mut self, session: impl SyncProxy, param: VariantMap)
     where
-        Self: Sized + From<VariantMap>,
+        Self: Sized,
     {
         #[cfg(feature = "client")]
         {
-            self.sync(session, "update", vec![params.into()]);
+            self.sync(session, "update", vec![self.to_network_map().into()]);
         }
         #[cfg(feature = "server")]
         {
-            *self = params.try_into().unwrap();
+            *self = Self::from_network_map(&mut param);
         }
     }
 
     /// Server -> Client: Update the whole object with received data
-    fn request_update(&mut self, session: impl SyncProxy, params: VariantMap)
+    fn request_update(&mut self, session: impl SyncProxy, mut param: VariantMap)
     where
-        Self: Sized + From<VariantMap>,
+        Self: Sized,
     {
         #[cfg(feature = "client")]
         {
-            *self = params.try_into().unwrap();
+            *self = Self::from_network_map(&mut param);
         }
         #[cfg(feature = "server")]
         {
-            self.sync(session, "requestUpdate", vec![params.into()]);
+            self.sync(session, "requestUpdate", vec![self.to_network_map().into()]);
         }
     }
 }

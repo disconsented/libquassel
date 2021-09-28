@@ -11,7 +11,6 @@ use crate::primitive::{VariantList, VariantMap};
 /// keeps a list of all registered aliases
 /// syncable
 #[derive(Clone, Debug, std::cmp::PartialEq, NetworkList, NetworkMap)]
-#[network]
 pub struct AliasManager {
     #[network(rename = "Aliases", variant = "VariantMap", network)]
     pub aliases: Vec<Alias>,
@@ -115,11 +114,11 @@ mod tests {
 
     #[test]
     fn aliasmanager_to_network() {
-        assert_eq!(get_src().to_network(), get_dest())
+        assert_eq!(get_src().to_network_list(), get_dest())
     }
 
     #[test]
     fn aliasmanager_from_network() {
-        assert_eq!(AliasManager::from_network(&mut get_dest()), get_src())
+        assert_eq!(AliasManager::from_network_list(&mut get_dest()), get_src())
     }
 }
