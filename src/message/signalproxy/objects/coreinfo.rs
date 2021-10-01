@@ -1,11 +1,11 @@
-use libquassel_derive::Network;
+use libquassel_derive::NetworkMap;
 
 use crate::primitive::{DateTime, StringList};
 
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreInfo {
-    #[network(rename = "coreData", network, variant = "VariantMap")]
+    #[network(rename = "coreData", variant = "VariantMap", network)]
     core_data: CoreData,
 }
 
@@ -17,7 +17,7 @@ pub struct CoreInfo {
 //  */
 // update(properties: QVariantMap)
 
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreData {
     #[network(rename = "quasselVersion")]
@@ -31,12 +31,13 @@ pub struct CoreData {
     #[network(
         rename = "sessionConnectedClientData",
         variant = "VariantList",
-        network
+        network,
+        map
     )]
     session_connected_client_data: Vec<ConnectedClient>,
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
 pub struct ConnectedClient {
     #[network(rename = "id")]

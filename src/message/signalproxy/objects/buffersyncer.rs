@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use crate::primitive::MessageType;
-use libquassel_derive::Network;
+use libquassel_derive::NetworkList;
 
-#[derive(Debug, Clone, PartialEq, Network)]
+use crate::message::signalproxy::translation::Network;
+
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 #[network(repr = "list")]
 pub struct BufferSyncer {
     #[network(rename = "Activities", network, variant = "VariantList")]
@@ -82,7 +84,7 @@ pub trait BufferSyncerClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::signalproxy::translation::Network;
+    use crate::message::signalproxy::translation::NetworkList;
     use crate::primitive::{Variant, VariantList};
     use pretty_assertions::assert_eq;
 
@@ -185,7 +187,7 @@ mod tests {
     #[test]
     fn buffersyncer_from_network() {
         assert_eq!(
-            BufferSyncer::from_network(&mut get_network()),
+            BufferSyncer::from_network_list(&mut get_network()),
             get_runtime()
         )
     }

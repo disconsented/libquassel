@@ -2,10 +2,10 @@ use crate::primitive::{DateTime, StringList};
 
 #[allow(unused_imports)]
 use crate::message::signalproxy::Network;
-use libquassel_derive::Network;
+use libquassel_derive::NetworkMap;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct IrcUser {
     pub user: String,
@@ -38,6 +38,7 @@ pub struct IrcUser {
 
 #[cfg(test)]
 mod tests {
+    use crate::message::signalproxy::NetworkMap;
     use crate::primitive::{Variant, VariantMap};
     use time::OffsetDateTime;
 
@@ -191,16 +192,16 @@ mod tests {
 
     #[test]
     fn ircuser_to_network() {
-        assert_eq!(get_runtime().to_network(), get_network())
+        assert_eq!(get_runtime().to_network_map(), get_network())
     }
 
     #[test]
     fn ircuser_from_network() {
-        assert_eq!(IrcUser::from_network(&mut get_network()), get_runtime())
+        assert_eq!(IrcUser::from_network_map(&mut get_network()), get_runtime())
     }
 
     #[test]
     fn vec_ircuser_to_network() {
-        assert_eq!(get_runtime().to_network(), get_network())
+        assert_eq!(get_runtime().to_network_map(), get_network())
     }
 }

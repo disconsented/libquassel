@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
+use crate::message::NetworkMap;
 use crate::primitive::{StringList, Variant, VariantList, VariantMap};
-
-use crate::message::signalproxy::Network;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -29,10 +28,10 @@ pub struct IrcChannel {
 //     D(char),
 // }
 
-impl Network for Vec<IrcChannel> {
+impl NetworkMap for Vec<IrcChannel> {
     type Item = VariantMap;
 
-    fn to_network(&self) -> Self::Item {
+    fn to_network_map(&self) -> Self::Item {
         let mut channelmodes: VariantList = Vec::with_capacity(self.len());
         let mut usermodes: VariantList = Vec::with_capacity(self.len());
         let mut name: VariantList = Vec::with_capacity(self.len());
@@ -103,23 +102,23 @@ impl Network for Vec<IrcChannel> {
         map
     }
 
-    fn from_network(input: &mut Self::Item) -> Self {
+    fn from_network_map(input: &mut Self::Item) -> Self {
         let marker: VariantList =
             std::convert::TryInto::try_into(input.get("name").unwrap()).unwrap();
 
         let mut res = Vec::new();
         for _ in 0..marker.len() {
-            res.push(IrcChannel::from_network(input));
+            res.push(IrcChannel::from_network_map(input));
         }
 
         return res;
     }
 }
 
-impl Network for IrcChannel {
+impl NetworkMap for IrcChannel {
     type Item = VariantMap;
 
-    fn to_network(&self) -> Self::Item {
+    fn to_network_map(&self) -> Self::Item {
         let mut res = VariantMap::new();
 
         res.insert(
@@ -188,7 +187,7 @@ impl Network for IrcChannel {
 
         res
     }
-    fn from_network(input: &mut Self::Item) -> Self {
+    fn from_network_map(input: &mut Self::Item) -> Self {
         let mut chanmodes: VariantMap = match_variant!(
             match_variant!(input.get_mut("ChanModes").unwrap(), Variant::VariantList).remove(0),
             Variant::VariantMap
@@ -334,11 +333,14 @@ mod tests {
 
     #[test]
     fn ircchannel_to_network() {
-        assert_eq!(get_runtime().to_network(), get_network())
+        assert_eq!(get_runtime().to_network_map(), get_network())
     }
 
     #[test]
     fn ircchannel_from_network() {
-        assert_eq!(IrcChannel::from_network(&mut get_network()), get_runtime())
+        assert_eq!(
+            IrcChannel::from_network_map(&mut get_network()),
+            get_runtime()
+        )
     }
 }

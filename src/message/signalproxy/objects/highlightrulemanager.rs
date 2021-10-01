@@ -1,20 +1,21 @@
-use libquassel_derive::Network;
+use libquassel_derive::{NetworkList, NetworkMap};
+
+use crate::message::signalproxy::translation::{Network, NetworkMap};
 
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct HighlightRuleManager {
-    #[network(rename = "HighlightRuleList", network, variant = "VariantMap")]
+    #[network(rename = "HighlightRuleList", variant = "VariantMap", network, map)]
     highlight_rule_list: Vec<HighlightRule>,
-    #[network(rename = "highlightNick", network, variant = "i32")]
+    #[network(rename = "highlightNick", variant = "i32", network)]
     highlight_nick: HighlightNickType,
     #[network(rename = "nicksCaseSensitive")]
     nicks_case_sensitive: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct HighlightRule {
     id: i32,
@@ -56,7 +57,7 @@ impl crate::message::signalproxy::Network for HighlightNickType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::signalproxy::translation::Network;
+    use crate::message::signalproxy::translation::NetworkList;
     use crate::primitive::{Variant, VariantList};
 
     use pretty_assertions::assert_eq;
@@ -100,13 +101,13 @@ mod tests {
 
     #[test]
     fn highlightrulemanager_to_network() {
-        assert_eq!(get_runtime().to_network(), get_network())
+        assert_eq!(get_runtime().to_network_list(), get_network())
     }
 
     #[test]
     fn highlightrulemanager_from_network() {
         assert_eq!(
-            HighlightRuleManager::from_network(&mut get_network()),
+            HighlightRuleManager::from_network_list(&mut get_network()),
             get_runtime()
         )
     }

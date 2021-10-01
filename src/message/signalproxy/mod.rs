@@ -1,10 +1,7 @@
-use std::convert::TryInto;
-
 use crate::{
     deserialize::Deserialize,
-    primitive::{VariantList, VariantMap},
+    primitive::{Variant, VariantList},
     serialize::Serialize,
-    session::Session,
 };
 
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -63,9 +60,14 @@ pub trait Syncable {
 
 /// A Stateful Syncable Object
 #[allow(unused_variables)]
-pub trait StatefulSyncable: Syncable + translation::NetworkMap {
+pub trait StatefulSyncable: Syncable + translation::NetworkMap
+// where
+// <T as Iterator>::Item: ToString,
+where
+    Variant: From<<Self as translation::NetworkMap>::Item>,
+{
     /// Client -> Server: Update the whole object with received data
-    fn update(&mut self, session: impl SyncProxy, param: VariantMap)
+    fn update(&mut self, session: impl SyncProxy, param: <Self as translation::NetworkMap>::Item)
     where
         Self: Sized,
     {
@@ -80,8 +82,11 @@ pub trait StatefulSyncable: Syncable + translation::NetworkMap {
     }
 
     /// Server -> Client: Update the whole object with received data
-    fn request_update(&mut self, session: impl SyncProxy, mut param: VariantMap)
-    where
+    fn request_update(
+        &mut self,
+        session: impl SyncProxy,
+        mut param: <Self as translation::NetworkMap>::Item,
+    ) where
         Self: Sized,
     {
         #[cfg(feature = "client")]

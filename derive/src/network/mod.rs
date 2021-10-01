@@ -11,8 +11,6 @@ mod maplist;
 #[darling(attributes(network), supports(struct_any))]
 /// Derive to and from network methods for quassel objects
 pub struct Network {
-    ident: syn::Ident,
-    attrs: Vec<syn::Attribute>,
     /// Representation to choose for the network format
     /// see Repr enum
     #[darling(default)]
@@ -22,7 +20,7 @@ pub struct Network {
 /// List:
 /// Map:
 /// Maplist:
-#[derive(Debug, Clone, Copy, FromMeta)]
+#[derive(Debug, Clone, Copy, PartialEq, FromMeta)]
 pub enum Repr {
     List,
     Map,
@@ -55,6 +53,10 @@ pub struct NetworkField {
     /// use to_network and from_network on it
     #[darling(default)]
     network: bool,
+    /// When network is true, use map
+    /// network representation for this field
+    #[darling(default)]
+    map: bool,
 }
 
 fn parse_fields(input: &syn::DeriveInput) -> Vec<NetworkField> {
@@ -90,17 +92,19 @@ pub fn network_map(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         Repr::Map | _ => map::from(&fields),
     };
 
-    let gen = quote! {
-        impl crate::message::signalproxy::NetworkMap for #name {
-            fn to_network_map(&self) -> VariantMap {
-                let mut res = VariantMap::new();
+    let mut gen = quote! {
+        impl libquassel::message::signalproxy::NetworkMap for #name {
+            type Item = libquassel::primitive::VariantMap;
+
+            fn to_network_map(&self) -> libquassel::primitive::VariantMap {
+                let mut res = libquassel::primitive::VariantMap::new();
 
                 #(#to_network_map)*
 
                 return res;
             }
 
-            fn from_network_map(input: &mut VariantMap) -> Self {
+            fn from_network_map(input: &mut libquassel::primitive::VariantMap) -> Self {
                 Self {
                     #(#from_network_map)*
                 }
@@ -108,13 +112,47 @@ pub fn network_map(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
+    let network_map_vec_item = match network.repr {
+        Repr::Map => quote! {libquassel::primitive::VariantList},
+        Repr::Maplist => quote! {libquassel::primitive::VariantMap},
+        Repr::List => quote! {libquassel::primitive::VariantList},
+    };
+
+    let to_network_map_vec = match network.repr {
+        Repr::Maplist => maplist::to_vec(name, &fields),
+        Repr::Map => map::to_vec(name, &fields, true),
+        _ => unimplemented!(),
+    };
+
+    let from_network_map_vec = match network.repr {
+        Repr::Maplist => maplist::from_vec(name, &fields, true),
+        Repr::Map => map::from_vec(name, &fields, true),
+        _ => unimplemented!(),
+    };
+
+    let list_map = quote! {
+        impl libquassel::message::signalproxy::NetworkMap for Vec<#name> {
+            type Item = #network_map_vec_item;
+
+            fn to_network_map(&self) -> Self::Item {
+                #to_network_map_vec
+            }
+
+            fn from_network_map(input: &mut Self::Item) -> Self {
+                #from_network_map_vec
+            }
+        }
+    };
+
+    gen.extend(list_map);
+
     gen.into()
 }
 
 pub fn network_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
 
-    let network = Network::from_derive_input(&input).unwrap();
+    let _network = Network::from_derive_input(&input).unwrap();
 
     let fields = parse_fields(&input);
 
@@ -124,16 +162,16 @@ pub fn network_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let from_network_list = list::from(&fields);
 
     let gen = quote! {
-        impl crate::message::signalproxy::NetworkList for #name {
-            fn to_network_list(&self) -> VariantList {
-                let mut res = VariantList::new();
+        impl libquassel::message::signalproxy::NetworkList for #name {
+            fn to_network_list(&self) -> libquassel::primitive::VariantList {
+                let mut res = libquassel::primitive::VariantList::new();
 
                 #(#to_network_list)*
 
                 return res;
             }
 
-            fn from_network_list(input: &mut VariantList) -> Self {
+            fn from_network_list(input: &mut libquassel::primitive::VariantList) -> Self {
                 Self {
                     #(#from_network_list)*
                 }
@@ -172,13 +210,13 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     let network_impl_item = match network.repr {
-        Repr::Map => quote! {crate::primitive::VariantMap;},
-        Repr::Maplist => quote! {crate::primitive::VariantMap;},
-        Repr::List => quote! {crate::primitive::VariantList;},
+        Repr::Map => quote! {libquassel::primitive::VariantMap;},
+        Repr::Maplist => quote! {libquassel::primitive::VariantMap;},
+        Repr::List => quote! {libquassel::primitive::VariantList;},
     };
 
     let mut gen = quote! {
-        impl crate::message::signalproxy::Network for #name {
+        impl libquassel::message::signalproxy::Network for #name {
             type Item = #network_impl_item
 
             fn to_network(&self) -> Self::Item {
@@ -199,25 +237,25 @@ pub fn network(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     if let Repr::Maplist | Repr::Map = network.repr {
         let network_impl_item_vec = match network.repr {
-            Repr::Map => quote! {crate::primitive::VariantList;},
-            Repr::Maplist => quote! {crate::primitive::VariantMap;},
-            Repr::List => quote! {crate::primitive::VariantList;},
+            Repr::Map => quote! {libquassel::primitive::VariantList;},
+            Repr::Maplist => quote! {libquassel::primitive::VariantMap;},
+            Repr::List => quote! {libquassel::primitive::VariantList;},
         };
 
         let to_network_impl_vec_center = match network.repr {
             Repr::Maplist => maplist::to_vec(name, &fields),
-            Repr::Map => map::to_vec(name, &fields),
+            Repr::Map => map::to_vec(name, &fields, false),
             _ => unimplemented!(),
         };
 
         let from_network_impl_vec_center = match network.repr {
-            Repr::Maplist => maplist::from_vec(name, &fields),
-            Repr::Map => map::from_vec(name, &fields),
+            Repr::Maplist => maplist::from_vec(name, &fields, false),
+            Repr::Map => map::from_vec(name, &fields, false),
             _ => unimplemented!(),
         };
 
         let vec = quote! {
-            impl crate::message::signalproxy::Network for Vec<#name> {
+            impl libquassel::message::signalproxy::Network for Vec<#name> {
                 type Item = #network_impl_item_vec
 
                 fn to_network(&self) -> Self::Item {

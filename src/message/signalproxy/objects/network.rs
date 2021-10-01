@@ -1,13 +1,13 @@
-use std::convert::TryInto;
-
-use crate::primitive::{Variant, VariantList, VariantMap};
-
-use libquassel_derive::Network;
-
 use std::collections::HashMap;
+use std::convert::TryInto;
 
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
+
+use libquassel_derive::{NetworkList, NetworkMap};
+
+use crate::message::signalproxy::translation::NetworkMap;
+use crate::primitive::{Variant, VariantList, VariantMap};
 
 use super::{ircchannel::IrcChannel, ircuser::IrcUser, networkinfo::NetworkInfo};
 
@@ -29,11 +29,9 @@ pub struct Network {
     network_info: NetworkInfo,
 }
 
-impl crate::message::signalproxy::Network for Network {
-    type Item = VariantList;
-
-    fn to_network(&self) -> Self::Item {
-        let mut res = Self::Item::new();
+impl crate::message::signalproxy::NetworkList for Network {
+    fn to_network_list(&self) -> VariantList {
+        let mut res = VariantList::new();
 
         res.push(Variant::ByteArray(s!("myNick")));
         res.push(Variant::String(self.my_nick.clone()));
@@ -78,7 +76,7 @@ impl crate::message::signalproxy::Network for Network {
                 Variant::VariantMap(self.irc_users.iter().fold(
                     HashMap::new(),
                     |mut res, (_, v)| {
-                        res.extend(v.to_network());
+                        res.extend(v.to_network_map());
 
                         res
                     },
@@ -89,7 +87,7 @@ impl crate::message::signalproxy::Network for Network {
                 .irc_channels
                 .iter()
                 .fold(HashMap::new(), |mut res, (_, v)| {
-                    res.extend(v.to_network());
+                    res.extend(v.to_network_map());
 
                     res
                 });
@@ -100,12 +98,12 @@ impl crate::message::signalproxy::Network for Network {
             res.push(Variant::VariantMap(map));
         }
 
-        res.extend(self.network_info.to_network());
+        res.extend(self.network_info.to_network_list());
 
         res
     }
 
-    fn from_network(input: &mut Self::Item) -> Self {
+    fn from_network_list(input: &mut VariantList) -> Self {
         let mut i = input.iter().cycle();
 
         let users_and_channels: VariantMap = {
@@ -152,7 +150,7 @@ impl crate::message::signalproxy::Network for Network {
             irc_users: {
                 match users_and_channels.get("Users") {
                     Some(users) => {
-                        let users: Vec<IrcUser> = Vec::<IrcUser>::from_network(
+                        let users: Vec<IrcUser> = Vec::<IrcUser>::from_network_map(
                             &mut users.try_into().expect("failed to convert Users"),
                         );
 
@@ -168,7 +166,7 @@ impl crate::message::signalproxy::Network for Network {
                 match users_and_channels.get("Channels") {
                     Some(channels) => {
                         let channels: Vec<IrcChannel> =
-                            Vec::<IrcChannel>::from_network(&mut channels.try_into().unwrap());
+                            Vec::<IrcChannel>::from_network_map(&mut channels.try_into().unwrap());
                         channels
                             .into_iter()
                             .map(|channel| (channel.name.clone(), channel))
@@ -205,13 +203,12 @@ impl crate::message::signalproxy::Network for Network {
 
                 var.into_iter().map(|v| v.try_into().unwrap()).collect()
             },
-            network_info: NetworkInfo::from_network(input),
+            network_info: NetworkInfo::from_network_list(input),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "map")]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 pub struct NetworkServer {
     #[network(rename = "Host")]
     pub host: String,
@@ -239,8 +236,7 @@ pub struct NetworkServer {
     pub proxy_pass: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct NetworkConfig {
     #[network(rename = "pingTimeoutEnabled")]
     ping_timeout_enabled: bool,
@@ -263,7 +259,6 @@ pub struct NetworkConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::signalproxy::translation::Network;
 
     fn networkserver_get_network() -> VariantMap {
         map! {
@@ -325,7 +320,7 @@ mod tests {
     #[test]
     fn network_server_to_network() {
         assert_eq!(
-            networkserver_get_runtime().to_network(),
+            networkserver_get_runtime().to_network_map(),
             networkserver_get_network()
         )
     }

@@ -1,7 +1,6 @@
-use libquassel_derive::Network;
+use libquassel_derive::NetworkMap;
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "map")]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 pub struct Identity {
     #[network(rename = "identityId")]
     identity_id: i32,

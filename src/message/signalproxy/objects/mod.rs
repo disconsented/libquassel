@@ -29,7 +29,7 @@ pub use networkinfo::*;
 use libquassel_derive::From;
 use log::debug;
 
-use super::{Network, NetworkList};
+use super::{NetworkList, NetworkMap};
 use crate::primitive::VariantList;
 
 /// Central Enum containing and identifying all Quassel Protocol Types:
@@ -73,17 +73,17 @@ impl Types {
         debug!("converting to network object: {:#?}", self);
         match self {
             Types::AliasManager(val) => val.to_network_list(),
-            Types::BufferSyncer(val) => val.to_network(),
-            Types::BufferViewConfig(val) => val.to_network(),
-            Types::BufferViewManager(val) => val.to_network(),
-            Types::CoreInfo(val) => vec![val.to_network().into()],
-            Types::CoreData(val) => vec![val.to_network().into()],
-            Types::HighlightRuleManager(val) => val.to_network(),
-            Types::IgnoreListManager(val) => val.to_network(),
-            Types::CertManager(val) => val.to_network(),
-            Types::Network(val) => val.to_network(),
-            Types::NetworkInfo(val) => val.to_network(),
-            Types::NetworkConfig(val) => val.to_network(),
+            Types::BufferSyncer(val) => val.to_network_list(),
+            Types::BufferViewConfig(val) => val.to_network_list(),
+            Types::BufferViewManager(val) => val.to_network_list(),
+            Types::CoreInfo(val) => vec![val.to_network_map().into()],
+            Types::CoreData(val) => vec![val.to_network_map().into()],
+            Types::HighlightRuleManager(val) => val.to_network_list(),
+            Types::IgnoreListManager(val) => val.to_network_list(),
+            Types::CertManager(val) => val.to_network_list(),
+            Types::Network(val) => val.to_network_list(),
+            Types::NetworkInfo(val) => val.to_network_list(),
+            Types::NetworkConfig(val) => val.to_network_list(),
             Types::Unknown(val) => val.clone(),
         }
     }
@@ -95,23 +95,29 @@ impl Types {
         );
         match class_name {
             "AliasManager" => Types::AliasManager(AliasManager::from_network_list(input)),
-            "BufferSyncer" => Types::BufferSyncer(BufferSyncer::from_network(input)),
-            "BufferViewConfig" => Types::BufferViewConfig(BufferViewConfig::from_network(input)),
-            "BufferViewManager" => Types::BufferViewManager(BufferViewManager::from_network(input)),
-            "CoreInfo" => Types::CoreInfo(CoreInfo::from_network(
+            "BufferSyncer" => Types::BufferSyncer(BufferSyncer::from_network_list(input)),
+            "BufferViewConfig" => {
+                Types::BufferViewConfig(BufferViewConfig::from_network_list(input))
+            }
+            "BufferViewManager" => {
+                Types::BufferViewManager(BufferViewManager::from_network_list(input))
+            }
+            "CoreInfo" => Types::CoreInfo(CoreInfo::from_network_map(
                 &mut input.remove(0).try_into().unwrap(),
             )),
-            "CoreData" => Types::CoreData(CoreData::from_network(
+            "CoreData" => Types::CoreData(CoreData::from_network_map(
                 &mut input.remove(0).try_into().unwrap(),
             )),
             "HighlightRuleManager" => {
-                Types::HighlightRuleManager(HighlightRuleManager::from_network(input))
+                Types::HighlightRuleManager(HighlightRuleManager::from_network_list(input))
             }
-            "IgnoreListManager" => Types::IgnoreListManager(IgnoreListManager::from_network(input)),
-            "CertManager" => Types::CertManager(CertManager::from_network(input)),
-            "Network" => Types::Network(Network::from_network(input)),
-            "NetworkInfo" => Types::NetworkInfo(NetworkInfo::from_network(input)),
-            "NetworkConfig" => Types::NetworkConfig(NetworkConfig::from_network(input)),
+            "IgnoreListManager" => {
+                Types::IgnoreListManager(IgnoreListManager::from_network_list(input))
+            }
+            "CertManager" => Types::CertManager(CertManager::from_network_list(input)),
+            "Network" => Types::Network(Network::from_network_list(input)),
+            "NetworkInfo" => Types::NetworkInfo(NetworkInfo::from_network_list(input)),
+            "NetworkConfig" => Types::NetworkConfig(NetworkConfig::from_network_list(input)),
             _ => Types::Unknown(input.to_owned()),
         }
     }

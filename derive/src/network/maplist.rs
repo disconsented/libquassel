@@ -30,13 +30,13 @@ pub(crate) fn to(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
             if let Some(_) = field.variant {
                 quote! {
                     res.insert(#field_rename.to_string(),
-                        crate::primitive::Variant::#field_type(
+                        libquassel::primitive::Variant::#field_type(
                             std::vec::from_elem(#field_inner, 1)));
                 }
             } else {
                 quote! {
                     res.insert(#field_rename.to_string(),
-                        crate::primitive::Variant::VariantList(
+                        libquassel::primitive::Variant::VariantList(
                             std::vec::from_elem(#field_inner, 1)));
                 }
             }
@@ -61,8 +61,14 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
             let field_type = get_field_variant_type(&field);
 
             let field_inner = if field.network {
-                quote! {
-                    item.#field_name.to_network()
+                if field.map {
+                    quote! {
+                        item.#field_name.to_network_map()
+                    }
+                } else {
+                    quote! {
+                        item.#field_name.to_network()
+                    }
                 }
             } else {
                 quote! {
@@ -72,7 +78,7 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
 
             if let Some(_) = field.variant {
                 lists.push(quote! {
-                    let mut #field_name: crate::primitive::StringList = Vec::with_capacity(self.len());
+                    let mut #field_name: libquassel::primitive::StringList = Vec::with_capacity(self.len());
                 });
 
                 for_each_inner.push(quote! {
@@ -80,19 +86,19 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
                 });
 
                 map_inserts.push(quote! {
-                    map.insert(String::from(#field_rename), crate::primitive::Variant::StringList(#field_name));
+                    map.insert(String::from(#field_rename), libquassel::primitive::Variant::StringList(#field_name));
                 });
             } else {
                 lists.push(quote! {
-                    let mut #field_name: crate::primitive::VariantList = Vec::with_capacity(self.len());
+                    let mut #field_name: libquassel::primitive::VariantList = Vec::with_capacity(self.len());
                 });
 
                 for_each_inner.push(quote! {
-                    #field_name.push(crate::primitive::Variant::#field_type(#field_inner));
+                    #field_name.push(libquassel::primitive::Variant::#field_type(#field_inner));
                 });
 
                 map_inserts.push(quote! {
-                    map.insert(String::from(#field_rename), crate::primitive::Variant::VariantList(#field_name));
+                    map.insert(String::from(#field_rename), libquassel::primitive::Variant::VariantList(#field_name));
                 });
             }
 
@@ -103,7 +109,7 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
     quote! {
         #(#lists)*
 
-        let mut map = crate::primitive::VariantMap::new();
+        let mut map = libquassel::primitive::VariantMap::new();
 
         self.iter().for_each(|item| {
             #(#for_each_inner)*
@@ -130,7 +136,7 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
 
             let field_inner = if field.network {
                 quote! {
-                    crate::message::Network::from_network(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
+                    libquassel::message::Network::from_network(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
                 }
             } else {
                 quote! {
@@ -141,14 +147,14 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
             if let Some(_) = field.variant {
                 quote! {
                     #field_name: match input.get_mut(#field_rename).unwrap() {
-                        crate::primitive::Variant::#field_type(input) => #field_inner,
+                        libquassel::primitive::Variant::#field_type(input) => #field_inner,
                         _ => panic!("#field_name: wrong variant")
                     },
                 }
             } else {
                 quote! {
                     #field_name: match input.get_mut(#field_rename).unwrap() {
-                        crate::primitive::Variant::VariantList(input) => #field_inner,
+                        libquassel::primitive::Variant::VariantList(input) => #field_inner,
                         _ => panic!("#field_name: wrong variant")
                     },
                 }
@@ -157,7 +163,7 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
         .collect()
 }
 
-pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStream {
+pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>, new: bool) -> TokenStream {
     let field = &fields[0];
 
     let field_rename = match &field.rename {
@@ -170,12 +176,22 @@ pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>) -> TokenSt
     let _field_type = get_field_variant_type(field);
 
     let field_variant = match &field.variant {
-        None => quote! {crate::primitive::VariantList},
+        None => quote! {libquassel::primitive::VariantList},
         Some(variant_type) => match variant_type.as_str() {
-            "StringList" => quote! {crate::primitive::StringList},
-            "VariantMap" => quote! {crate::primitive::VariantMap},
-            _ => quote! {crate::primitive::VariantMap},
+            "StringList" => quote! {libquassel::primitive::StringList},
+            "VariantMap" => quote! {libquassel::primitive::VariantMap},
+            _ => quote! {libquassel::primitive::VariantMap},
         },
+    };
+
+    let inner = if new {
+        quote! {
+            #type_name::from_network_map(input)
+        }
+    } else {
+        quote! {
+            #type_name::from_network(input)
+        }
     };
 
     quote! {
@@ -183,7 +199,7 @@ pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>) -> TokenSt
 
         let mut res = Vec::new();
         for _ in 0..marker.len() {
-            res.push(#type_name::from_network(input));
+            res.push(#inner);
         }
 
         return res;

@@ -1,18 +1,17 @@
 use std::convert::TryInto;
 
-use libquassel_derive::{Network, NetworkList, NetworkMap};
+use libquassel_derive::{NetworkList, NetworkMap};
 
 use crate::message::{StatefulSyncable, SyncProxy, Syncable};
 
-use crate::message::signalproxy::translation::{Network, NetworkMap};
-use crate::primitive::{VariantList, VariantMap};
+use crate::message::signalproxy::translation::NetworkMap;
 
 /// AliasManager
 /// keeps a list of all registered aliases
 /// syncable
 #[derive(Clone, Debug, std::cmp::PartialEq, NetworkList, NetworkMap)]
 pub struct AliasManager {
-    #[network(rename = "Aliases", variant = "VariantMap", network)]
+    #[network(rename = "Aliases", variant = "VariantMap", network, map)]
     pub aliases: Vec<Alias>,
 }
 
@@ -51,7 +50,7 @@ impl Syncable for AliasManager {
 
 /// Alias
 /// Represents a signle alias
-#[derive(Clone, Debug, std::cmp::PartialEq, Network)]
+#[derive(Clone, Debug, std::cmp::PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct Alias {
     #[network(rename = "names", variant = "StringList")]

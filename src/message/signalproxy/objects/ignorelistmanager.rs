@@ -1,10 +1,11 @@
-use libquassel_derive::Network;
+use crate::message::signalproxy::translation::{Network, NetworkMap};
+use libquassel_derive::{NetworkList, NetworkMap};
+
 use std::convert::TryFrom;
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct IgnoreListManager {
-    #[network(rename = "IgnoreList", network, variant = "VariantMap")]
+    #[network(rename = "IgnoreList", variant = "VariantMap", network, map)]
     ignore_list: Vec<IgnoreListItem>,
     // // C->S calls
 
@@ -32,7 +33,7 @@ pub struct IgnoreListManager {
     // update(properties: QVariantMap)
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
+#[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct IgnoreListItem {
     #[network(rename = "ignoreType", network, type = "u8")]
@@ -76,7 +77,7 @@ impl TryFrom<u8> for IgnoreType {
     }
 }
 
-impl super::Network for IgnoreType {
+impl crate::message::signalproxy::Network for IgnoreType {
     type Item = u8;
 
     fn to_network(&self) -> Self::Item {
@@ -109,7 +110,7 @@ impl TryFrom<u8> for StrictnessType {
     }
 }
 
-impl super::Network for StrictnessType {
+impl crate::message::signalproxy::Network for StrictnessType {
     type Item = u8;
 
     fn to_network(&self) -> Self::Item {
@@ -142,7 +143,7 @@ impl TryFrom<u8> for ScopeType {
     }
 }
 
-impl super::Network for ScopeType {
+impl crate::message::signalproxy::Network for ScopeType {
     type Item = u8;
 
     fn to_network(&self) -> Self::Item {

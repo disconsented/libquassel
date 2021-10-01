@@ -1,7 +1,6 @@
-use libquassel_derive::Network;
+use libquassel_derive::NetworkList;
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct CertManager {
     #[network(rename = "sslKey", variant = "ByteArray")]
     pub ssl_key: String,

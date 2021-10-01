@@ -8,7 +8,6 @@ use darling::{FromDeriveInput, FromVariant};
 #[darling(attributes(from), supports(enum_any))]
 struct Enum {
     ident: syn::Ident,
-    attrs: Vec<syn::Attribute>,
 }
 
 #[derive(Debug, FromVariant)]

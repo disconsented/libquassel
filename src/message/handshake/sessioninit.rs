@@ -20,13 +20,13 @@ pub struct SessionInit {
 
 impl From<VariantMap> for SessionInit {
     fn from(input: VariantMap) -> Self {
-        use crate::message::signalproxy::Network;
+        use crate::message::signalproxy::NetworkMap;
         let state: VariantMap = input.get("SessionState").unwrap().try_into().unwrap();
 
         log::trace!("sessionstate: {:#?}", state);
 
         SessionInit {
-            identities: Vec::<Identity>::from_network(
+            identities: Vec::<Identity>::from_network_map(
                 &mut state.get("Identities").unwrap().try_into().unwrap(),
             ),
             buffers: match_variant!(state.get("BufferInfos").unwrap(), Variant::VariantList)

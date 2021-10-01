@@ -1,6 +1,8 @@
-use libquassel_derive::Network;
 use std::{collections::HashMap, convert::TryInto};
 
+use libquassel_derive::NetworkList;
+
+use crate::message::signalproxy::translation::Network;
 use crate::primitive::{Variant, VariantList};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,10 +29,8 @@ pub struct BufferViewManager {
     // update(properties: QVariantMap)
 }
 
-impl super::Network for BufferViewManager {
-    type Item = VariantList;
-
-    fn to_network(&self) -> Self::Item {
+impl super::NetworkList for BufferViewManager {
+    fn to_network_list(&self) -> VariantList {
         let mut res = Vec::with_capacity(2);
 
         res.push(Variant::ByteArray(s!("bufferViewIds")));
@@ -44,7 +44,7 @@ impl super::Network for BufferViewManager {
         return res;
     }
 
-    fn from_network(_input: &mut Self::Item) -> Self {
+    fn from_network_list(_input: &mut VariantList) -> Self {
         // TODO Somehow do the initrequests for all the IDs we get here
         Self {
             buffer_view_configs: HashMap::new(),
@@ -52,8 +52,7 @@ impl super::Network for BufferViewManager {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct BufferViewConfig {
     #[network(rename = "BufferList", network, variant = "VariantList")]
     pub buffers: Vec<i32>,

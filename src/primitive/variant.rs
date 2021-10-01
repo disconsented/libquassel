@@ -141,6 +141,44 @@ where
     }
 }
 
+impl<T, S> crate::message::NetworkMap for HashMap<T, S>
+where
+    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
+    S: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
+{
+    type Item = super::VariantList;
+
+    fn to_network_map(&self) -> Self::Item {
+        let mut res = Vec::with_capacity(self.len() * 2);
+
+        self.iter().for_each(|(k, v)| {
+            res.push((*k).clone().into());
+            res.push((*v).clone().into());
+        });
+
+        return res;
+    }
+
+    fn from_network_map(input: &mut Self::Item) -> Self {
+        let mut res = HashMap::with_capacity(input.len() / 2);
+
+        input.iter().tuples().for_each(|(k, v)| {
+            res.insert(
+                match T::try_from(k.clone()) {
+                    Ok(it) => it,
+                    _ => unreachable!(),
+                },
+                match S::try_from(v.clone()) {
+                    Ok(it) => it,
+                    _ => unreachable!(),
+                },
+            );
+        });
+
+        return res;
+    }
+}
+
 impl Serialize for Variant {
     fn serialize(&self) -> Result<Vec<u8>, Error> {
         let unknown: u8 = 0x00;

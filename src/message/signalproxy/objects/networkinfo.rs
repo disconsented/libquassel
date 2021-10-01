@@ -1,16 +1,16 @@
 use crate::primitive::StringList;
 
-use libquassel_derive::Network;
+use libquassel_derive::NetworkList;
 
 use crate::message::objects::network::NetworkServer;
+use crate::message::signalproxy::translation::NetworkMap;
 
-#[derive(Debug, Clone, PartialEq, Network)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct NetworkInfo {
     #[network(rename = "networkName")]
     pub network_name: String,
 
-    #[network(rename = "ServerList", network, variant = "VariantList")]
+    #[network(rename = "ServerList", variant = "VariantList", network, map)]
     pub server_list: Vec<NetworkServer>,
     #[network(rename = "perform")]
     pub perform: StringList,
@@ -71,7 +71,7 @@ mod tests {
     use crate::primitive::{Variant, VariantList};
 
     use super::*;
-    use crate::message::signalproxy::translation::Network;
+    use crate::message::signalproxy::translation::NetworkList;
 
     use pretty_assertions::assert_eq;
 
@@ -154,11 +154,14 @@ mod tests {
 
     #[test]
     fn networkinfo_to_network() {
-        assert_eq!(get_runtime().to_network(), get_network())
+        assert_eq!(get_runtime().to_network_list(), get_network())
     }
 
     #[test]
     fn networkinfo_from_network() {
-        assert_eq!(NetworkInfo::from_network(&mut get_network()), get_runtime())
+        assert_eq!(
+            NetworkInfo::from_network_list(&mut get_network()),
+            get_runtime()
+        )
     }
 }

@@ -84,7 +84,7 @@ VariantMap({
 })
 ```
 **/
-use crate::primitive::{VariantList, VariantMap};
+use crate::primitive::VariantList;
 
 pub trait Network {
     type Item;
@@ -94,8 +94,10 @@ pub trait Network {
 }
 
 pub trait NetworkMap {
-    fn to_network_map(&self) -> VariantMap;
-    fn from_network_map(input: &mut VariantMap) -> Self;
+    type Item;
+
+    fn to_network_map(&self) -> Self::Item;
+    fn from_network_map(input: &mut Self::Item) -> Self;
 }
 
 pub trait NetworkList {
