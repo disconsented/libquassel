@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 /**
 Quassel has 3 main ways to represent an object over the Network:
 
@@ -84,7 +86,7 @@ VariantMap({
 })
 ```
 **/
-use crate::primitive::VariantList;
+use crate::primitive::{Variant, VariantList};
 
 pub trait Network {
     type Item;
@@ -93,7 +95,12 @@ pub trait Network {
     fn from_network(input: &mut Self::Item) -> Self;
 }
 
-pub trait NetworkMap {
+pub trait NetworkMap
+where
+    // TODO correct this error type
+    Self::Item: TryFrom<Variant, Error = String>,
+    Self::Item: Into<Variant>,
+{
     type Item;
 
     fn to_network_map(&self) -> Self::Item;

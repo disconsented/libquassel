@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::{
     deserialize::Deserialize,
     primitive::{Variant, VariantList},
@@ -50,53 +52,89 @@ pub trait Syncable {
     /// }
     /// }
     /// ```
-    fn sync(&self, session: impl SyncProxy, function: &str, params: VariantList);
+    fn send_sync(&self, session: impl SyncProxy, function: &str, params: VariantList);
 
     /// Send a RpcCall
-    fn rpc(&self, session: impl SyncProxy, function: &str, params: VariantList) {
+    fn send_rpc(&self, session: impl SyncProxy, function: &str, params: VariantList) {
         session.rpc(function, params);
     }
 }
 
-/// A Stateful Syncable Object
-#[allow(unused_variables)]
-pub trait StatefulSyncable: Syncable + translation::NetworkMap
-// where
-// <T as Iterator>::Item: ToString,
+/// Methods for a Stateful Syncable object on the client side.
+pub trait StatefulSyncableServer: Syncable + translation::NetworkMap
 where
     Variant: From<<Self as translation::NetworkMap>::Item>,
 {
-    /// Client -> Server: Update the whole object with received data
-    fn update(&mut self, session: impl SyncProxy, param: <Self as translation::NetworkMap>::Item)
+    fn sync(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
-        #[cfg(feature = "client")]
-        {
-            self.sync(session, "update", vec![self.to_network_map().into()]);
-        }
-        #[cfg(feature = "server")]
-        {
-            *self = Self::from_network_map(&mut param);
+        match msg.slot_name.as_str() {
+            "requestUpdate" => self.request_update(msg.params.pop().unwrap().try_into().unwrap()),
+            _ => self.sync_custom(session, msg),
         }
     }
 
-    /// Server -> Client: Update the whole object with received data
-    fn request_update(
-        &mut self,
-        session: impl SyncProxy,
-        mut param: <Self as translation::NetworkMap>::Item,
-    ) where
+    #[allow(unused_mut, unused_variables)]
+    fn sync_custom(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    where
         Self: Sized,
     {
-        #[cfg(feature = "client")]
-        {
-            *self = Self::from_network_map(&mut param);
+        match msg.slot_name.as_str() {
+            _ => (),
         }
-        #[cfg(feature = "server")]
-        {
-            self.sync(session, "requestUpdate", vec![self.to_network_map().into()]);
+    }
+
+    /// Client -> Server: Update the whole object with received data
+    fn update(&mut self, session: impl SyncProxy)
+    where
+        Self: Sized,
+    {
+        self.send_sync(session, "update", vec![self.to_network_map().into()]);
+    }
+
+    /// Server -> Client: Update the whole object with received data
+    fn request_update(&mut self, mut param: <Self as translation::NetworkMap>::Item)
+    where
+        Self: Sized,
+    {
+        *self = Self::from_network_map(&mut param);
+    }
+}
+
+/// Methods for a Stateful Syncable object on the server side.
+pub trait StatefulSyncableClient: Syncable + translation::NetworkMap {
+    fn sync(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "update" => self.update(msg.params.pop().unwrap().try_into().unwrap()),
+            _ => self.sync_custom(session, msg),
         }
+    }
+
+    fn sync_custom(&mut self, _session: impl SyncProxy, _msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        ()
+    }
+
+    /// Client -> Server: Update the whole object with received data
+    fn update(&mut self, mut param: <Self as translation::NetworkMap>::Item)
+    where
+        Self: Sized,
+    {
+        *self = Self::from_network_map(&mut param);
+    }
+
+    /// Server -> Client: Update the whole object with received data
+    fn request_update(&mut self, session: impl SyncProxy)
+    where
+        Self: Sized,
+    {
+        self.send_sync(session, "requestUpdate", vec![self.to_network_map().into()]);
     }
 }
 

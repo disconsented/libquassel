@@ -1,10 +1,16 @@
-use std::convert::TryInto;
+use std::convert::TryFrom;
 
 use libquassel_derive::{NetworkList, NetworkMap};
 
-use crate::message::{StatefulSyncable, SyncProxy, Syncable};
+#[allow(unused_imports)]
+use crate::message::StatefulSyncableClient;
+#[allow(unused_imports)]
+use crate::message::StatefulSyncableServer;
+
+use crate::message::{SyncProxy, Syncable};
 
 use crate::message::signalproxy::translation::NetworkMap;
+use crate::primitive::VariantMap;
 
 /// AliasManager
 /// keeps a list of all registered aliases
@@ -22,28 +28,33 @@ impl AliasManager {
             self.aliases.push(alias)
         }
     }
+}
 
-    pub fn handle_syncmessage(
-        &mut self,
-        session: impl SyncProxy,
-        msg: crate::message::SyncMessage,
-    ) {
+#[cfg(feature = "client")]
+impl StatefulSyncableClient for AliasManager {}
+
+#[cfg(feature = "server")]
+impl StatefulSyncableServer for AliasManager {
+    fn sync_custom(&mut self, _session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
         match msg.slot_name.as_str() {
-            "requestUpdate" => {
-                self.request_update(session, msg.params.get(0).unwrap().try_into().unwrap())
-            }
-            "update" => {
-                *self =
-                    AliasManager::from_network_map(&mut msg.params[0].clone().try_into().unwrap())
-            }
+            "addAlias" => self.add_alias(Alias::from_network_map(
+                &mut VariantMap::try_from(msg.params.pop().unwrap()).unwrap(),
+            )),
             _ => (),
         }
     }
 }
 
-impl StatefulSyncable for AliasManager {}
 impl Syncable for AliasManager {
-    fn sync(&self, session: impl SyncProxy, function: &str, params: crate::primitive::VariantList) {
+    fn send_sync(
+        &self,
+        session: impl SyncProxy,
+        function: &str,
+        params: crate::primitive::VariantList,
+    ) {
         session.sync("AliasManager", None, function, params)
     }
 }
