@@ -10,12 +10,15 @@ use druid::{
 };
 use druid::{AppLauncher, Data, Env, Lens, LocalizedString, Widget, WidgetExt, WindowDesc};
 
-use libquassel::message::objects::AliasManager;
-use libquassel::message::NetworkMap;
+use libquassel::message::{NetworkMap, StatefulSyncableServer};
+use libquassel::{
+    message::{objects::AliasManager, StatefulSyncableClient},
+    session::Session,
+};
 
 use tracing::debug;
 
-use crate::server::{Message, ServerWidget};
+use crate::server::{Direction, Message, ServerWidget};
 
 const SPACING: f64 = 10.0;
 
@@ -98,8 +101,6 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
 
             return druid::Handled::Yes;
         } else if let Some(msg) = cmd.get(command::ADD_MESSAGE) {
-            debug!("got ADD_MESSAGE command");
-
             let list = Arc::make_mut(&mut data.messages);
             list.push(msg.take().unwrap());
         } else if let Some(alias) = cmd.get(command::ALIASMANAGER_ADD_ALIAS) {
@@ -109,9 +110,18 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
         } else if let Some(alias_manager) = cmd.get(command::ALIASMANAGER_INIT) {
             data.alias_manager = Arc::new(alias_manager.take().unwrap());
         } else if let Some(msg) = cmd.get(command::ALIASMANAGER_UPDATE) {
-            let syncer = data.syncer.clone();
+            let (direction, msg) = msg.take().unwrap();
+
+            debug!("direction: {:#?}, msg: {:#?}", direction, msg);
+
             let mut alias_manager = Arc::make_mut(&mut data.alias_manager).clone();
-            alias_manager.handle_syncmessage(syncer, msg.take().unwrap());
+
+            if direction == Direction::ServerToClient {
+                StatefulSyncableClient::sync(&mut alias_manager, &data, msg);
+            } else {
+                StatefulSyncableServer::sync(&mut alias_manager, &data, msg);
+            }
+
             data.alias_manager = Arc::new(alias_manager);
         }
 
@@ -119,10 +129,16 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
     }
 }
 
+// impl Session for StateTracker {
+//     fn alias_manager(&mut self) -> &mut AliasManager {
+//         &mut Arc::make_mut(&mut self.alias_manager).clone()
+//     }
+// }
+
 // TODO make this somehow deref or smth
 #[derive(Clone)]
 pub struct Syncer;
-impl libquassel::message::SyncProxy for Syncer {
+impl libquassel::message::SyncProxy for StateTracker {
     fn sync(
         &self,
         class_name: &str,

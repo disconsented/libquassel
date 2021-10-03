@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-libquassel = { path = "../../", features = ["framing", "all-quassel-features"] }
+libquassel = { path = "../../", features = ["framing", "all-quassel-features", "client", "server"] }
 
 druid = { git = "https://github.com/linebender/druid", features = ["im"] }
 

@@ -11,7 +11,7 @@ use tokio_util::codec::Framed;
 use tracing::debug;
 
 use crate::{
-    server::{ClientState, Server},
+    server::{ClientState, Direction, Server},
     StateTracker,
 };
 
@@ -69,8 +69,20 @@ impl StateTracker {
                 let c_state = ClientState::Handshake;
 
                 tokio::join!(
-                    Server::run(s_stream, c_sink, s_state, ctx.clone(), "server -> client"),
-                    Server::run(c_stream, s_sink, c_state, ctx.clone(), "client -> server")
+                    Server::run(
+                        s_stream,
+                        c_sink,
+                        s_state,
+                        ctx.clone(),
+                        Direction::ServerToClient
+                    ),
+                    Server::run(
+                        c_stream,
+                        s_sink,
+                        c_state,
+                        ctx.clone(),
+                        Direction::ClientToServer
+                    )
                 );
             });
         });

@@ -93,6 +93,12 @@ impl Data for Message {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Direction {
+    ServerToClient,
+    ClientToServer,
+}
+
 impl Server {
     pub async fn init(
         &self,
@@ -116,7 +122,7 @@ impl Server {
         mut sink: SplitSink<Framed<TcpStream, QuasselCodec>, Vec<u8>>,
         mut state: ClientState,
         ctx: ExtEventSink,
-        direction: &str,
+        direction: Direction,
     ) {
         // Start event loop
         while let Some(msg) = stream.next().await {
@@ -141,7 +147,7 @@ impl Server {
     async fn handle_login_message(
         buf: &[u8],
         state: &mut ClientState,
-        direction: &str,
+        direction: Direction,
         _ctx: ExtEventSink,
     ) -> Result<Message, Error> {
         use libquassel::HandshakeDeserialize;
@@ -149,7 +155,7 @@ impl Server {
         trace!(target: "handshakemessage", "Received bytes: {:x?}", buf);
         match HandshakeMessage::parse(buf) {
             Ok((_size, res)) => {
-                info!("{}: {:#?}", direction, res);
+                // info!("{}: {:#?}", direction, res);
 
                 match res {
                     HandshakeMessage::SessionInit(_) => *state = ClientState::Connected,
@@ -165,7 +171,7 @@ impl Server {
 
     async fn handle_message(
         buf: &[u8],
-        _direction: &str,
+        direction: Direction,
         ctx: ExtEventSink,
     ) -> Result<Message, Error> {
         use libquassel::deserialize::*;
@@ -182,7 +188,7 @@ impl Server {
                             "update" => ctx
                                 .submit_command(
                                     command::ALIASMANAGER_UPDATE,
-                                    SingleUse::new(msg),
+                                    SingleUse::new((direction, msg)),
                                     Target::Global,
                                 )
                                 .unwrap(),
