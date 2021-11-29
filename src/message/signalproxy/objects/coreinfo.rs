@@ -1,8 +1,9 @@
-use libquassel_derive::NetworkMap;
+use libquassel_derive::{NetworkList, NetworkMap};
 
+use crate::message::signalproxy::translation::NetworkMap;
 use crate::primitive::{DateTime, StringList};
 
-#[derive(Debug, Clone, PartialEq, NetworkMap)]
+#[derive(Debug, Clone, PartialEq, NetworkMap, NetworkList)]
 #[network(repr = "map")]
 pub struct CoreInfo {
     #[network(rename = "coreData", variant = "VariantMap", network)]

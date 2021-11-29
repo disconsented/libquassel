@@ -51,13 +51,14 @@ use crate::primitive::VariantList;
 ///  - [X] Network
 ///  - [X] NetworkInfo
 ///  - [X] NetworkConfig
+// TODO Handle SyncedCoreInfo feature flag
 #[derive(Debug, Clone, PartialEq, From)]
 pub enum Types {
     AliasManager(AliasManager),
     BufferSyncer(BufferSyncer),
     BufferViewConfig(BufferViewConfig),
     BufferViewManager(BufferViewManager),
-    CoreInfo(CoreInfo),
+    // CoreInfo(CoreInfo),
     CoreData(CoreData),
     HighlightRuleManager(HighlightRuleManager),
     IgnoreListManager(IgnoreListManager),
@@ -76,7 +77,7 @@ impl Types {
             Types::BufferSyncer(val) => val.to_network_list(),
             Types::BufferViewConfig(val) => val.to_network_list(),
             Types::BufferViewManager(val) => val.to_network_list(),
-            Types::CoreInfo(val) => vec![val.to_network_map().into()],
+            // Types::CoreInfo(val) => vec![val.to_network_map().into()],
             Types::CoreData(val) => vec![val.to_network_map().into()],
             Types::HighlightRuleManager(val) => val.to_network_list(),
             Types::IgnoreListManager(val) => val.to_network_list(),
@@ -88,7 +89,7 @@ impl Types {
         }
     }
 
-    pub fn from_network(class_name: &str, input: &mut VariantList) -> Self {
+    pub fn from_network(class_name: &str, _object_name: &str, input: &mut VariantList) -> Self {
         debug!(
             "converting {} from network object: {:#?}",
             class_name, input
@@ -102,9 +103,9 @@ impl Types {
             "BufferViewManager" => {
                 Types::BufferViewManager(BufferViewManager::from_network_list(input))
             }
-            "CoreInfo" => Types::CoreInfo(CoreInfo::from_network_map(
-                &mut input.remove(0).try_into().unwrap(),
-            )),
+            // "CoreInfo" => Types::CoreInfo(CoreInfo::from_network_map(
+            //     &mut input.remove(0).try_into().unwrap(),
+            // )),
             "CoreData" => Types::CoreData(CoreData::from_network_map(
                 &mut input.remove(0).try_into().unwrap(),
             )),
