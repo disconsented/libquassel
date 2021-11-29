@@ -1,19 +1,16 @@
-#![feature(type_name_of_val)]
+use std::{collections::HashMap, sync::Arc};
 
-use std::{ops::Deref, sync::Arc};
-
-use aliasmanager::AliasManagerWidget;
 use druid::{
-    lens,
     widget::{Align, Either, Flex, Label, List, Split},
     AppDelegate, Command,
 };
 use druid::{AppLauncher, Data, Env, Lens, LocalizedString, Widget, WidgetExt, WindowDesc};
+use widgets::{AliasManagerWidget, BufferViewWidget};
 
-use libquassel::message::{NetworkMap, StatefulSyncableServer};
-use libquassel::{
-    message::{objects::AliasManager, StatefulSyncableClient},
-    session::Session,
+use libquassel::message::{objects::AliasManager, StatefulSyncableClient, SyncProxy};
+use libquassel::message::{
+    objects::{self, BufferViewManager},
+    StatefulSyncableServer,
 };
 
 use tracing::debug;
@@ -25,18 +22,19 @@ const SPACING: f64 = 10.0;
 const VERTICAL_WIDGET_SPACING: f64 = 20.0;
 const WINDOW_TITLE: LocalizedString<StateTracker> = LocalizedString::new("StateTracker");
 
+mod widgets;
+
 mod command;
 mod connect;
 mod formatter;
 mod server;
-
-mod aliasmanager;
 
 #[derive(Clone, Data, Lens)]
 struct StateTracker {
     server: server::Server,
     messages: Arc<Vec<server::Message>>,
     alias_manager: Arc<AliasManager>,
+    buffer_view_manager: Arc<BufferViewManager>,
     connected: bool,
     #[data(ignore)]
     syncer: Syncer,
@@ -44,14 +42,22 @@ struct StateTracker {
 
 impl StateTracker {
     fn new() -> StateTracker {
+        let (sync_channel, rpc_channel) = SyncProxy::init(1024);
+
         StateTracker {
             server: server::Server::default(),
             messages: Arc::new(Vec::new()),
             alias_manager: Arc::new(AliasManager {
                 aliases: Vec::new(),
             }),
+            buffer_view_manager: Arc::new(BufferViewManager {
+                buffer_view_configs: HashMap::new(),
+            }),
             connected: false,
-            syncer: Syncer {},
+            syncer: Syncer {
+                sync_channel,
+                rpc_channel,
+            },
         }
     }
 
@@ -61,7 +67,10 @@ impl StateTracker {
             Split::columns(
                 Flex::column()
                     .with_child(Label::new("AliasManager"))
-                    .with_child(AliasManagerWidget::new().lens(StateTracker::alias_manager)),
+                    .with_child(AliasManagerWidget::new().lens(StateTracker::alias_manager))
+                    .with_spacer(SPACING)
+                    .with_child(Label::new("BufferViewManager"))
+                    .with_child(BufferViewWidget::new().lens(StateTracker::buffer_view_manager)),
                 List::new(|| {
                     Label::new(|item: &Message, _env: &_| format!("{:#?}", item)).padding(10.0)
                 })
@@ -80,6 +89,12 @@ impl StateTracker {
             .with_spacer(VERTICAL_WIDGET_SPACING);
 
         Align::centered(layout)
+    }
+}
+
+impl Default for StateTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -107,22 +122,66 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
             let mut alias_manager = Arc::make_mut(&mut data.alias_manager).clone();
             alias_manager.add_alias(alias.take().unwrap());
             data.alias_manager = Arc::new(alias_manager);
-        } else if let Some(alias_manager) = cmd.get(command::ALIASMANAGER_INIT) {
-            data.alias_manager = Arc::new(alias_manager.take().unwrap());
-        } else if let Some(msg) = cmd.get(command::ALIASMANAGER_UPDATE) {
+        } else if let Some(initdata) = cmd.get(command::INITDATA) {
+            let (_, initdata) = initdata.take().unwrap();
+            match initdata.init_data {
+                objects::Types::AliasManager(alias_manager) => {
+                    data.alias_manager = Arc::new(alias_manager)
+                }
+                objects::Types::BufferViewManager(buffer_view_manager) => {
+                    data.buffer_view_manager = Arc::new(buffer_view_manager)
+                }
+                objects::Types::BufferViewConfig(config) => {
+                    let id: i32 = initdata.object_name.parse().unwrap();
+
+                    let mut buffer_view_manager =
+                        Arc::make_mut(&mut data.buffer_view_manager).clone();
+
+                    buffer_view_manager.buffer_view_configs.insert(id, config);
+
+                    data.buffer_view_manager = Arc::new(buffer_view_manager)
+                }
+                _ => (),
+            }
+        } else if let Some(msg) = cmd.get(command::SYNCMESSAGE) {
             let (direction, msg) = msg.take().unwrap();
 
             debug!("direction: {:#?}, msg: {:#?}", direction, msg);
 
-            let mut alias_manager = Arc::make_mut(&mut data.alias_manager).clone();
+            match msg.class_name.as_str() {
+                "AliasManager" => {
+                    let mut alias_manager = Arc::make_mut(&mut data.alias_manager).clone();
 
-            if direction == Direction::ServerToClient {
-                StatefulSyncableClient::sync(&mut alias_manager, &data, msg);
-            } else {
-                StatefulSyncableServer::sync(&mut alias_manager, &data, msg);
+                    if direction == Direction::ServerToClient {
+                        StatefulSyncableClient::sync(&mut alias_manager, msg);
+                    } else {
+                        StatefulSyncableServer::sync(&mut alias_manager, msg);
+                    }
+
+                    data.alias_manager = Arc::new(alias_manager);
+                }
+                "BufferViewConfig" => {
+                    let mut buffer_view_manager =
+                        Arc::make_mut(&mut data.buffer_view_manager).clone();
+
+                    let id: i32 = msg.object_name.parse().unwrap();
+
+                    let buffer_view_config = buffer_view_manager
+                        .buffer_view_configs
+                        .get_mut(&id)
+                        .unwrap();
+
+                    if direction == Direction::ServerToClient {
+                        StatefulSyncableClient::sync(buffer_view_config, msg);
+                    } else {
+                        StatefulSyncableServer::sync(buffer_view_config, msg);
+                    }
+
+                    data.buffer_view_manager = Arc::new(buffer_view_manager);
+                }
+
+                _ => (),
             }
-
-            data.alias_manager = Arc::new(alias_manager);
         }
 
         druid::Handled::No
@@ -137,21 +196,9 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
 
 // TODO make this somehow deref or smth
 #[derive(Clone)]
-pub struct Syncer;
-impl libquassel::message::SyncProxy for StateTracker {
-    fn sync(
-        &self,
-        class_name: &str,
-        object_name: Option<&str>,
-        function: &str,
-        params: libquassel::primitive::VariantList,
-    ) {
-        todo!()
-    }
-
-    fn rpc(&self, function: &str, params: libquassel::primitive::VariantList) {
-        todo!()
-    }
+pub struct Syncer {
+    sync_channel: crossbeam_channel::Receiver<libquassel::message::SyncMessage>,
+    rpc_channel: crossbeam_channel::Receiver<libquassel::message::RpcCall>,
 }
 
 fn main() {

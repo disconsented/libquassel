@@ -40,7 +40,8 @@ pub enum U16ValidationError {
 
 impl std::fmt::Display for U16ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", std::any::type_name_of_val(self))
+        // TODO set correct display based on actual value
+        write!(f, "U16ValidationError::WrongNumberOfCharacters")
     }
 }
 

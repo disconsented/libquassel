@@ -1,7 +1,5 @@
 use anyhow::{bail, Error};
 
-use std::convert::TryFrom;
-
 use druid::{
     widget::{
         Align, Button, Checkbox, Container, Controller, ControllerHost, Flex, Label, TextBox,
@@ -12,8 +10,7 @@ use druid::{
 use libquassel::{
     deserialize::Deserialize,
     frame::QuasselCodec,
-    message::{self, objects, ConnAck, HandshakeMessage, Init},
-    primitive::VariantMap,
+    message::{self, ConnAck, HandshakeMessage, Init},
 };
 
 use futures::{
@@ -26,7 +23,7 @@ use tokio::{
 };
 use tokio_util::codec::Framed;
 
-use tracing::{debug, info, trace};
+use tracing::{debug, trace};
 
 use crate::{command, formatter};
 
@@ -147,7 +144,7 @@ impl Server {
     async fn handle_login_message(
         buf: &[u8],
         state: &mut ClientState,
-        direction: Direction,
+        _direction: Direction,
         _ctx: ExtEventSink,
     ) -> Result<Message, Error> {
         use libquassel::HandshakeDeserialize;
@@ -183,31 +180,22 @@ impl Server {
 
                 #[allow(unused_variables)]
                 match res {
-                    message::Message::SyncMessage(msg) => match msg.class_name.as_str() {
-                        "AliasManager" => match msg.slot_name.as_str() {
-                            "update" => ctx
-                                .submit_command(
-                                    command::ALIASMANAGER_UPDATE,
-                                    SingleUse::new((direction, msg)),
-                                    Target::Global,
-                                )
-                                .unwrap(),
-                            _ => (),
-                        },
-                        _ => (),
-                    },
+                    message::Message::SyncMessage(msg) => ctx
+                        .submit_command(
+                            command::SYNCMESSAGE,
+                            SingleUse::new((direction, msg)),
+                            Target::Global,
+                        )
+                        .unwrap(),
                     message::Message::RpcCall(msg) => (),
                     message::Message::InitRequest(msg) => (),
-                    message::Message::InitData(msg) => match msg.init_data {
-                        objects::Types::AliasManager(alias_manager) => ctx
-                            .submit_command(
-                                command::ALIASMANAGER_INIT,
-                                SingleUse::new(alias_manager),
-                                Target::Global,
-                            )
-                            .unwrap(),
-                        _ => (),
-                    },
+                    message::Message::InitData(msg) => ctx
+                        .submit_command(
+                            command::INITDATA,
+                            SingleUse::new((direction, msg)),
+                            Target::Global,
+                        )
+                        .unwrap(),
                     message::Message::HeartBeat(msg) => (),
                     message::Message::HeartBeatReply(msg) => (),
                 }
