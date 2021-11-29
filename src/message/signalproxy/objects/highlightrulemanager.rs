@@ -1,11 +1,18 @@
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
+
 use libquassel_derive::{NetworkList, NetworkMap};
 
 use crate::message::signalproxy::translation::{Network, NetworkMap};
 
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+#[allow(unused_imports)]
+use crate::message::StatefulSyncableClient;
+#[allow(unused_imports)]
+use crate::message::StatefulSyncableServer;
 
-#[derive(Debug, Clone, PartialEq, NetworkList)]
+use crate::message::{SyncProxy, Syncable};
+
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct HighlightRuleManager {
     #[network(rename = "HighlightRuleList", variant = "VariantMap", network, map)]
     highlight_rule_list: Vec<HighlightRule>,
@@ -13,6 +20,16 @@ pub struct HighlightRuleManager {
     highlight_nick: HighlightNickType,
     #[network(rename = "nicksCaseSensitive")]
     nicks_case_sensitive: bool,
+}
+
+#[cfg(feature = "client")]
+impl StatefulSyncableClient for HighlightRuleManager {}
+
+#[cfg(feature = "server")]
+impl StatefulSyncableServer for HighlightRuleManager {}
+
+impl Syncable for HighlightRuleManager {
+    const CLASS: &'static str = "HighlightRuleManager";
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
