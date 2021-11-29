@@ -35,7 +35,7 @@ impl StatefulSyncableClient for AliasManager {}
 
 #[cfg(feature = "server")]
 impl StatefulSyncableServer for AliasManager {
-    fn sync_custom(&mut self, _session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
@@ -49,14 +49,7 @@ impl StatefulSyncableServer for AliasManager {
 }
 
 impl Syncable for AliasManager {
-    fn send_sync(
-        &self,
-        session: impl SyncProxy,
-        function: &str,
-        params: crate::primitive::VariantList,
-    ) {
-        session.sync("AliasManager", None, function, params)
-    }
+    const CLASS: &'static str = "AliasManager";
 }
 
 /// Alias

@@ -24,39 +24,72 @@ pub use initrequest::*;
 pub use rpccall::*;
 pub use syncmessage::*;
 
+use once_cell::sync::OnceCell;
+
+pub static SYNC_PROXY: OnceCell<SyncProxy> = OnceCell::new();
+
+#[derive(Debug, Clone)]
+pub struct SyncProxy {
+    sync_channel: crossbeam_channel::Sender<SyncMessage>,
+    rpc_channel: crossbeam_channel::Sender<RpcCall>,
+}
+
 /// SyncProxy sends sync and rpc messages
-pub trait SyncProxy {
+impl SyncProxy {
+    /// Initialize the global SYNC_PROXY object and return receiver ends for the SyncMessage and RpcCall channels
+    pub fn init(cap: usize) -> (crossbeam_channel::Receiver<SyncMessage>, crossbeam_channel::Receiver<RpcCall>) {
+        let (sync_tx, sync_rx) = crossbeam_channel::bounded(cap);
+        let (rpc_tx, rpc_rx) = crossbeam_channel::bounded(cap);
+
+        SYNC_PROXY.set(SyncProxy { sync_channel: sync_tx, rpc_channel: rpc_tx }).unwrap();
+
+        (sync_rx, rpc_rx)
+    }
+
+    /// Send a SyncMessage
     fn sync(
         &self,
         class_name: &str,
         object_name: Option<&str>,
         function: &str,
         params: VariantList,
-    );
+    ) {
+        self.sync_channel.send(SyncMessage {
+            class_name: class_name.to_string(),
+            object_name: object_name.unwrap_or("").to_string(),
+            slot_name: function.to_string(),
+            params,
+        }).unwrap();
+    }
 
-    /// Send a RpcCall
-    fn rpc(&self, function: &str, params: VariantList);
+    /// Send an RpcCall
+    fn rpc(&self, function: &str, params: VariantList) {}
 }
 
 /// A base Syncable Object
+///
+/// Provides default implementations for sending SyncMessages and
+/// RpcCalls so you usually only have to set the CLASS const
 pub trait Syncable {
+    /// The Class of the object as transmitted in the SyncMessage
+    const CLASS: &'static str;
+
     /// Send a SyncMessage.
-    ///
-    /// Must implement a call to session.sync() that sets the class and object names
-    ///
-    /// Example:
-    /// ```ignore
-    /// impl Syncable for AliasManager {
-    /// fn sync(&self, session: impl SyncProxy, function: &str, params: VariantList) {
-    /// session.sync("AliasManager", None, function, params)
-    /// }
-    /// }
-    /// ```
-    fn send_sync(&self, session: impl SyncProxy, function: &str, params: VariantList);
+    fn send_sync(&self, object_name: Option<&str>, function: &str, params: VariantList) {
+        crate::message::signalproxy::SYNC_PROXY.get().unwrap().sync(
+            Self::CLASS,
+            object_name,
+            function,
+            params,
+        );
+    }
 
     /// Send a RpcCall
-    fn send_rpc(&self, session: impl SyncProxy, function: &str, params: VariantList) {
-        session.rpc(function, params);
+    fn send_rpc(&self, function: &str, params: VariantList) {
+        crate::message::signalproxy::SYNC_PROXY
+            .get()
+            .unwrap()
+            .rpc(function, params);
     }
 }
 
@@ -65,18 +98,20 @@ pub trait StatefulSyncableServer: Syncable + translation::NetworkMap
 where
     Variant: From<<Self as translation::NetworkMap>::Item>,
 {
-    fn sync(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    fn sync(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
         match msg.slot_name.as_str() {
-            "requestUpdate" => self.request_update(msg.params.pop().unwrap().try_into().unwrap()),
-            _ => self.sync_custom(session, msg),
+            "requestUpdate" => StatefulSyncableServer::request_update(
+                self,
+                msg.params.pop().unwrap().try_into().unwrap(),
+            ),
+            _ => StatefulSyncableServer::sync_custom(self, msg),
         }
     }
 
-    #[allow(unused_mut, unused_variables)]
-    fn sync_custom(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
@@ -86,11 +121,11 @@ where
     }
 
     /// Client -> Server: Update the whole object with received data
-    fn update(&mut self, session: impl SyncProxy)
+    fn update(&mut self)
     where
         Self: Sized,
     {
-        self.send_sync(session, "update", vec![self.to_network_map().into()]);
+        self.send_sync(None, "update", vec![self.to_network_map().into()]);
     }
 
     /// Server -> Client: Update the whole object with received data
@@ -104,21 +139,25 @@ where
 
 /// Methods for a Stateful Syncable object on the server side.
 pub trait StatefulSyncableClient: Syncable + translation::NetworkMap {
-    fn sync(&mut self, session: impl SyncProxy, mut msg: crate::message::SyncMessage)
+    fn sync(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
         match msg.slot_name.as_str() {
-            "update" => self.update(msg.params.pop().unwrap().try_into().unwrap()),
-            _ => self.sync_custom(session, msg),
+            "update" => {
+                StatefulSyncableClient::update(self, msg.params.pop().unwrap().try_into().unwrap())
+            }
+            _ => StatefulSyncableClient::sync_custom(self, msg),
         }
     }
 
-    fn sync_custom(&mut self, _session: impl SyncProxy, _msg: crate::message::SyncMessage)
+    fn sync_custom(&mut self, msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {
-        ()
+        match msg.slot_name.as_str() {
+            _ => (),
+        }
     }
 
     /// Client -> Server: Update the whole object with received data
@@ -130,11 +169,11 @@ pub trait StatefulSyncableClient: Syncable + translation::NetworkMap {
     }
 
     /// Server -> Client: Update the whole object with received data
-    fn request_update(&mut self, session: impl SyncProxy)
+    fn request_update(&mut self)
     where
         Self: Sized,
     {
-        self.send_sync(session, "requestUpdate", vec![self.to_network_map().into()]);
+        self.send_sync(None, "requestUpdate", vec![self.to_network_map().into()]);
     }
 }
 

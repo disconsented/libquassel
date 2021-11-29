@@ -32,13 +32,14 @@ impl Deserialize for InitData {
         res.remove(0);
 
         let class_name: String = res.remove(0).into();
+        let object_name: String = res.remove(0).into();
 
         Ok((
             size,
             Self {
                 class_name: class_name.clone(),
-                object_name: res.remove(0).into(),
-                init_data: Types::from_network(class_name.as_str(), &mut res),
+                object_name: object_name.clone(),
+                init_data: Types::from_network(class_name.as_str(), object_name.as_str(), &mut res),
             },
         ))
     }
