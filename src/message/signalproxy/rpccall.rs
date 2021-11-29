@@ -6,6 +6,7 @@ use crate::{deserialize::Deserialize, serialize::Serialize};
 #[derive(Clone, Debug, std::cmp::PartialEq)]
 pub enum RpcCall {
     DisplayMessage(DisplayMessage),
+    NotImplemented,
 }
 
 #[derive(Clone, Debug, std::cmp::PartialEq)]
@@ -30,6 +31,7 @@ impl Serialize for RpcCall {
                 res.push(Variant::ByteArray("2displayMsg(Message)".to_string()));
                 res.push(Variant::Message(msg.message.clone()));
             }
+            RpcCall::NotImplemented => todo!(),
         }
 
         res.serialize()
@@ -53,7 +55,7 @@ impl Deserialize for RpcCall {
                     }),
                 ))
             }
-            _ => unimplemented!(),
+            _ => return Ok((size, RpcCall::NotImplemented)),
         }
     }
 }
