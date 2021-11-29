@@ -1,5 +1,7 @@
-#![feature(test)]
-#![feature(doc_cfg)]
+#![cfg_attr(all(test, feature = "bench"), feature(test))]
+#[cfg(all(test, feature = "bench"))]
+extern crate test;
+
 #[doc = include_str!("../README.md")]
 #[cfg_attr(docsrs, feature(doc_cfg))]
 extern crate self as libquassel;

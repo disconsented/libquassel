@@ -53,6 +53,8 @@ sender-prefixes = []
 # Support for exchangeable auth backends
 authenticators = []
 
+# Enable the test crate/feature for running benchmarks
+bench = []
 
 default = ["client"]
 
