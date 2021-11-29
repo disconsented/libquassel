@@ -1,6 +1,6 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap, convert::TryFrom, convert::TryInto};
 
-use libquassel_derive::NetworkList;
+use libquassel_derive::{NetworkList, NetworkMap};
 
 use crate::message::signalproxy::translation::Network;
 use crate::primitive::{Variant, VariantList};
@@ -52,7 +52,7 @@ impl super::NetworkList for BufferViewManager {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, NetworkList)]
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferViewConfig {
     #[network(rename = "BufferList", network, variant = "VariantList")]
     pub buffers: Vec<i32>,
@@ -61,6 +61,8 @@ pub struct BufferViewConfig {
     #[network(rename = "TemporarilyRemovedBuffers", network, variant = "VariantList")]
     pub temporarily_removed_buffers: Vec<i32>,
 
+    // TODO think about how to handle the buffer view id
+    //   we might introduce a default flag for the network macro
     // #[network(rename = "bufferViewId")]
     // pub buffer_view_id: i32,
     #[network(rename = "bufferViewName")]
