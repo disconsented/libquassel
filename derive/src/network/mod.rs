@@ -57,6 +57,13 @@ pub struct NetworkField {
     /// network representation for this field
     #[darling(default)]
     map: bool,
+    /// Skips this field when parsing from network
+    /// representation and uses the default value of the type
+    #[darling(default)]
+    default: bool,
+    /// Skips this field when serializing to network representation
+    #[darling(default)]
+    skip: bool,
 }
 
 fn parse_fields(input: &syn::DeriveInput) -> Vec<NetworkField> {

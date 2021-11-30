@@ -7,39 +7,43 @@ pub(crate) fn to(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
     fields
         .iter()
         .map(|field| {
-            let field_rename = match &field.rename {
-                Some(name) => name.clone(),
-                None => format!("{}", field.ident.as_ref().unwrap()).into(),
-            };
+            if !field.skip {
+                let field_rename = match &field.rename {
+                    Some(name) => name.clone(),
+                    None => format!("{}", field.ident.as_ref().unwrap()).into(),
+                };
 
-            let field_name = field.ident.as_ref().unwrap();
-            let _field_type = get_field_type(&field);
-            let field_variant_type = get_field_variant_type(&field);
+                let field_name = field.ident.as_ref().unwrap();
+                let _field_type = get_field_type(&field);
+                let field_variant_type = get_field_variant_type(&field);
 
-            let field_inner = if field.network {
-                if field.map {
-                    quote! {
-                        self.#field_name.to_network_map()
+                let field_inner = if field.network {
+                    if field.map {
+                        quote! {
+                            self.#field_name.to_network_map()
+                        }
+                    } else {
+                        match field.variant.as_ref().map_or("", |m| m.as_str()) {
+                            "VariantMap" => quote! {
+                                self.#field_name.to_network_map()
+                            },
+                            &_ => quote! {
+                                self.#field_name.to_network()
+                            },
+                        }
                     }
                 } else {
-                    match field.variant.as_ref().map_or("", |m| m.as_str()) {
-                        "VariantMap" => quote! {
-                            self.#field_name.to_network_map()
-                        },
-                        &_ => quote! {
-                            self.#field_name.to_network()
-                        },
+                    quote! {
+                        self.#field_name.clone()
                     }
+                };
+
+                quote! {
+                    res.insert(#field_rename.to_string(),
+                        libquassel::primitive::Variant::#field_variant_type(#field_inner));
                 }
             } else {
-                quote! {
-                    self.#field_name.clone()
-                }
-            };
-
-            quote! {
-                res.insert(#field_rename.to_string(),
-                    libquassel::primitive::Variant::#field_variant_type(#field_inner));
+                quote! {}
             }
         })
         .collect()
@@ -49,39 +53,46 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
     fields
         .iter()
         .map(|field| {
-            let field_rename = match &field.rename {
-                Some(name) => name.clone(),
-                None => format!("{}", field.ident.as_ref().unwrap()).into(),
-            };
-
             let field_name = field.ident.as_ref().unwrap();
-            let field_type = get_field_type(&field);
-            let _field_variant_type = get_field_variant_type(&field);
 
-            let field_type_colon = get_field_type_colon(field_type.clone());
-
-            if field.network {
-                if field.map {
-                    quote! {
-                        #field_name: #field_type_colon::from_network_map(
-                            &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
-                    }
-                } else {
-                    match field.variant.as_ref().map_or("", |m| m.as_str()) {
-                        "VariantMap" => quote! {
-                                    #field_name: #field_type_colon::from_network_map(
-                                        &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
-                                },
-
-                        &_ => quote! {
-                            #field_name: #field_type_colon::from_network(
-                                &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
-                        }
-                    }
+            if field.default {
+                quote! {
+                    #field_name: Default::default(),
                 }
             } else {
-                quote! {
-                    #field_name: std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap(),
+                let field_rename = match &field.rename {
+                    Some(name) => name.clone(),
+                    None => format!("{}", field.ident.as_ref().unwrap()).into(),
+                };
+
+                let field_type = get_field_type(&field);
+                let _field_variant_type = get_field_variant_type(&field);
+
+                let field_type_colon = get_field_type_colon(field_type.clone());
+
+                if field.network {
+                    if field.map {
+                        quote! {
+                            #field_name: #field_type_colon::from_network_map(
+                                &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
+                        }
+                    } else {
+                        match field.variant.as_ref().map_or("", |m| m.as_str()) {
+                            "VariantMap" => quote! {
+                                        #field_name: #field_type_colon::from_network_map(
+                                            &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
+                                    },
+
+                            &_ => quote! {
+                                #field_name: #field_type_colon::from_network(
+                                    &mut std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap()),
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        #field_name: std::convert::TryInto::try_into(input.remove(#field_rename).unwrap()).unwrap(),
+                    }
                 }
             }
         })

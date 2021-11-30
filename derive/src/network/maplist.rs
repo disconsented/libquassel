@@ -9,36 +9,40 @@ pub(crate) fn to(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
     fields
         .iter()
         .map(|field| {
-            let field_rename = match &field.rename {
-                Some(name) => name.clone(),
-                None => format!("{}", field.ident.as_ref().unwrap()).into(),
-            };
+            if !field.skip {
+                let field_rename = match &field.rename {
+                    Some(name) => name.clone(),
+                    None => format!("{}", field.ident.as_ref().unwrap()).into(),
+                };
 
-            let field_name = field.ident.as_ref().unwrap();
-            let field_type = get_field_variant_type(&field);
+                let field_name = field.ident.as_ref().unwrap();
+                let field_type = get_field_variant_type(&field);
 
-            let field_inner = if field.network {
-                quote! {
-                    self.#field_name.to_network().into()
+                let field_inner = if field.network {
+                    quote! {
+                        self.#field_name.to_network().into()
+                    }
+                } else {
+                    quote! {
+                        self.#field_name.clone().into()
+                    }
+                };
+
+                if let Some(_) = field.variant {
+                    quote! {
+                        res.insert(#field_rename.to_string(),
+                            libquassel::primitive::Variant::#field_type(
+                                std::vec::from_elem(#field_inner, 1)));
+                    }
+                } else {
+                    quote! {
+                        res.insert(#field_rename.to_string(),
+                            libquassel::primitive::Variant::VariantList(
+                                std::vec::from_elem(#field_inner, 1)));
+                    }
                 }
             } else {
-                quote! {
-                    self.#field_name.clone().into()
-                }
-            };
-
-            if let Some(_) = field.variant {
-                quote! {
-                    res.insert(#field_rename.to_string(),
-                        libquassel::primitive::Variant::#field_type(
-                            std::vec::from_elem(#field_inner, 1)));
-                }
-            } else {
-                quote! {
-                    res.insert(#field_rename.to_string(),
-                        libquassel::primitive::Variant::VariantList(
-                            std::vec::from_elem(#field_inner, 1)));
-                }
+                quote! {}
             }
         })
         .collect()
@@ -52,54 +56,56 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
     ) = fields.iter().fold(
         (Vec::new(), Vec::new(), Vec::new()),
         |(mut lists, mut for_each_inner, mut map_inserts), field| {
-            let field_rename = match &field.rename {
-                Some(name) => name.clone(),
-                None => format!("{}", field.ident.as_ref().unwrap()).into(),
-            };
+            if !field.skip {
+                let field_rename = match &field.rename {
+                    Some(name) => name.clone(),
+                    None => format!("{}", field.ident.as_ref().unwrap()).into(),
+                };
 
-            let field_name = field.ident.as_ref().unwrap();
-            let field_type = get_field_variant_type(&field);
+                let field_name = field.ident.as_ref().unwrap();
+                let field_type = get_field_variant_type(&field);
 
-            let field_inner = if field.network {
-                if field.map {
-                    quote! {
-                        item.#field_name.to_network_map()
+                let field_inner = if field.network {
+                    if field.map {
+                        quote! {
+                            item.#field_name.to_network_map()
+                        }
+                    } else {
+                        quote! {
+                            item.#field_name.to_network()
+                        }
                     }
                 } else {
                     quote! {
-                        item.#field_name.to_network()
+                        item.#field_name.clone()
                     }
+                };
+
+                if let Some(_) = field.variant {
+                    lists.push(quote! {
+                        let mut #field_name: libquassel::primitive::StringList = Vec::with_capacity(self.len());
+                    });
+
+                    for_each_inner.push(quote! {
+                        #field_name.push(#field_inner);
+                    });
+
+                    map_inserts.push(quote! {
+                        map.insert(String::from(#field_rename), libquassel::primitive::Variant::StringList(#field_name));
+                    });
+                } else {
+                    lists.push(quote! {
+                        let mut #field_name: libquassel::primitive::VariantList = Vec::with_capacity(self.len());
+                    });
+
+                    for_each_inner.push(quote! {
+                        #field_name.push(libquassel::primitive::Variant::#field_type(#field_inner));
+                    });
+
+                    map_inserts.push(quote! {
+                        map.insert(String::from(#field_rename), libquassel::primitive::Variant::VariantList(#field_name));
+                    });
                 }
-            } else {
-                quote! {
-                    item.#field_name.clone()
-                }
-            };
-
-            if let Some(_) = field.variant {
-                lists.push(quote! {
-                    let mut #field_name: libquassel::primitive::StringList = Vec::with_capacity(self.len());
-                });
-
-                for_each_inner.push(quote! {
-                    #field_name.push(#field_inner);
-                });
-
-                map_inserts.push(quote! {
-                    map.insert(String::from(#field_rename), libquassel::primitive::Variant::StringList(#field_name));
-                });
-            } else {
-                lists.push(quote! {
-                    let mut #field_name: libquassel::primitive::VariantList = Vec::with_capacity(self.len());
-                });
-
-                for_each_inner.push(quote! {
-                    #field_name.push(libquassel::primitive::Variant::#field_type(#field_inner));
-                });
-
-                map_inserts.push(quote! {
-                    map.insert(String::from(#field_rename), libquassel::primitive::Variant::VariantList(#field_name));
-                });
             }
 
             return (lists, for_each_inner, map_inserts);
@@ -125,38 +131,44 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
     fields
         .iter()
         .map(|field| {
-            let field_rename = match &field.rename {
-                Some(name) => name.clone(),
-                None => format!("{}", field.ident.as_ref().unwrap()).into(),
-            };
-
             let field_name = field.ident.as_ref().unwrap();
 
-            let field_type = get_field_variant_type(&field);
-
-            let field_inner = if field.network {
+            if field.default {
                 quote! {
-                    libquassel::message::Network::from_network(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
+                    #field_name: Default::default(),
                 }
             } else {
-                quote! {
-                    std::convert::TryInto::try_into(input.remove(0)).unwrap()
-                }
-            };
+                let field_rename = match &field.rename {
+                    Some(name) => name.clone(),
+                    None => format!("{}", field.ident.as_ref().unwrap()).into(),
+                };
 
-            if let Some(_) = field.variant {
-                quote! {
-                    #field_name: match input.get_mut(#field_rename).unwrap() {
-                        libquassel::primitive::Variant::#field_type(input) => #field_inner,
-                        _ => panic!("#field_name: wrong variant")
-                    },
-                }
-            } else {
-                quote! {
-                    #field_name: match input.get_mut(#field_rename).unwrap() {
-                        libquassel::primitive::Variant::VariantList(input) => #field_inner,
-                        _ => panic!("#field_name: wrong variant")
-                    },
+                let field_type = get_field_variant_type(&field);
+
+                let field_inner = if field.network {
+                    quote! {
+                        libquassel::message::Network::from_network(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
+                    }
+                } else {
+                    quote! {
+                        std::convert::TryInto::try_into(input.remove(0)).unwrap()
+                    }
+                };
+
+                if let Some(_) = field.variant {
+                    quote! {
+                        #field_name: match input.get_mut(#field_rename).unwrap() {
+                            libquassel::primitive::Variant::#field_type(input) => #field_inner,
+                            _ => panic!("#field_name: wrong variant")
+                        },
+                    }
+                } else {
+                    quote! {
+                        #field_name: match input.get_mut(#field_rename).unwrap() {
+                            libquassel::primitive::Variant::VariantList(input) => #field_inner,
+                            _ => panic!("#field_name: wrong variant")
+                        },
+                    }
                 }
             }
         })
