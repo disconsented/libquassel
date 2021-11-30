@@ -62,10 +62,8 @@ pub struct BufferViewConfig {
     #[network(rename = "TemporarilyRemovedBuffers", network, variant = "VariantList")]
     pub temporarily_removed_buffers: Vec<i32>,
 
-    // TODO think about how to handle the buffer view id
-    //   we might introduce a default flag for the network macro
-    // #[network(rename = "bufferViewId")]
-    // pub buffer_view_id: i32,
+    #[network(rename = "bufferViewId", default, skip)]
+    pub buffer_view_id: i32,
     #[network(rename = "bufferViewName")]
     pub buffer_view_name: String,
     #[network(rename = "networkId")]
@@ -123,10 +121,22 @@ impl BufferViewConfig {
             self.buffers.insert(pos, id)
         }
 
+        if let Some(old_pos) = self.removed_buffers.iter().position(|&x| x == id) {
+            self.removed_buffers.remove(old_pos);
+        }
+
+        if let Some(old_pos) = self.temporarily_removed_buffers.iter().position(|&x| x == id) {
+            self.temporarily_removed_buffers.remove(old_pos);
+        }
+
         #[cfg(feature = "server")]
         {
             // TODO replace the None with self.buffer_view_id
-            self.send_sync(None, "addBuffer", vec![id.into(), (pos as i32).into()])
+            self.send_sync(
+                Some(&self.buffer_view_id.to_string()),
+                "addBuffer",
+                vec![id.into(), (pos as i32).into()],
+            )
         }
     }
 
@@ -137,34 +147,30 @@ impl BufferViewConfig {
     }
 
     fn remove_buffer(&mut self, id: i32) {
-        if self.buffers.contains(&id) {
-            let old_pos = self.buffers.iter().position(|&x| x == id).unwrap();
+        if let Some(old_pos) = self.buffers.iter().position(|&x| x == id) {
             self.buffers.remove(old_pos);
         }
 
-        if self.removed_buffers.contains(&id) {
-            let old_pos = self.removed_buffers.iter().position(|&x| x == id).unwrap();
+        if let Some(old_pos) = self.removed_buffers.iter().position(|&x| x == id) {
             self.removed_buffers.remove(old_pos);
         }
 
         if !self.temporarily_removed_buffers.contains(&id) {
-            self.buffers.push(id)
+            self.temporarily_removed_buffers.push(id)
         }
     }
 
     fn remove_buffer_permanently(&mut self, id: i32) {
-        if self.buffers.contains(&id) {
-            let old_pos = self.buffers.iter().position(|&x| x == id).unwrap();
+        if let Some(old_pos) = self.buffers.iter().position(|&x| x == id) {
             self.buffers.remove(old_pos);
         }
 
-        if self.temporarily_removed_buffers.contains(&id) {
-            let old_pos = self.removed_buffers.iter().position(|&x| x == id).unwrap();
-            self.removed_buffers.remove(old_pos);
+        if let Some(old_pos) = self.temporarily_removed_buffers.iter().position(|&x| x == id) {
+            self.temporarily_removed_buffers.remove(old_pos);
         }
 
         if !self.removed_buffers.contains(&id) {
-            self.buffers.push(id)
+            self.removed_buffers.push(id)
         }
     }
 }

@@ -54,12 +54,15 @@ impl SyncProxy {
         function: &str,
         params: VariantList,
     ) {
-        self.sync_channel.send(SyncMessage {
+        let msg = SyncMessage {
             class_name: class_name.to_string(),
             object_name: object_name.unwrap_or("").to_string(),
             slot_name: function.to_string(),
             params,
-        }).unwrap();
+        };
+
+        debug!("submitting {:#?}", msg);
+        self.sync_channel.send(msg).unwrap();
     }
 
     /// Send an RpcCall
