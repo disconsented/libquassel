@@ -10,7 +10,7 @@ use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableServer;
 
-use crate::message::{SyncProxy, Syncable};
+use crate::message::Syncable;
 
 #[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct HighlightRuleManager {

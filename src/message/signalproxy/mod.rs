@@ -6,6 +6,7 @@ use crate::{
     serialize::Serialize,
 };
 
+use log::debug;
 use num_derive::{FromPrimitive, ToPrimitive};
 
 mod heartbeat;
@@ -116,6 +117,7 @@ where
         }
     }
 
+    #[allow(unused_mut)]
     fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,

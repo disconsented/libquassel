@@ -1,4 +1,4 @@
-use crate::message::{objects::AliasManager, StatefulSyncableClient, SyncMessage, SyncProxy};
+use crate::message::objects::AliasManager;
 
 /// The Session Trait is the main point of entry and implements the basic logic
 pub trait Session {

@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 
 use libquassel_derive::{NetworkList, NetworkMap};
 
@@ -7,10 +6,14 @@ use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableServer;
 
-use crate::message::{SyncProxy, Syncable};
+use crate::message::Syncable;
 
 use crate::message::signalproxy::translation::NetworkMap;
+
+#[allow(unused_imports)]
 use crate::primitive::VariantMap;
+#[allow(unused_imports)]
+use std::convert::TryFrom;
 
 /// AliasManager
 /// keeps a list of all registered aliases
