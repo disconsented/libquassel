@@ -1,6 +1,7 @@
 mod aliasmanager;
 mod buffersyncer;
-mod bufferview;
+mod bufferviewmanager;
+mod bufferviewconfig;
 mod certmanager;
 mod coreinfo;
 mod highlightrulemanager;
@@ -15,7 +16,8 @@ use std::convert::TryInto;
 
 pub use aliasmanager::*;
 pub use buffersyncer::*;
-pub use bufferview::*;
+pub use bufferviewmanager::*;
+pub use bufferviewconfig::*;
 pub use certmanager::*;
 pub use coreinfo::*;
 pub use highlightrulemanager::*;
