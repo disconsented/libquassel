@@ -30,6 +30,9 @@ pub mod error;
 /// Framing impl to be used with [`tokio_util::codec::Framed`]
 pub mod frame;
 
+#[cfg(all(feature = "client", feature = "server"))]
+compile_error!("feature \"client\" and feature \"server\" cannot be enabled at the same time");
+
 /// Traits for Serialization of objects
 pub mod serialize {
     use failure::Error;

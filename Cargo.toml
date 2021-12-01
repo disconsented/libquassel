@@ -59,7 +59,7 @@ authenticators = []
 # Enable the test crate/feature for running benchmarks
 bench = []
 
-default = ["client"]
+default = []
 
 [package.metadata.docs.rs]
 # document all features
