@@ -66,22 +66,24 @@ impl SyncProxy {
     }
 
     /// Send an RpcCall
-    fn rpc(&self, function: &str, params: VariantList) {}
+    fn rpc(&self, _function: &str, _params: VariantList) {}
 }
 
 /// A base Syncable Object
 ///
 /// Provides default implementations for sending SyncMessages and
-/// RpcCalls so you usually only have to set the CLASS const
+/// RpcCalls so you usually only have to set the CLASS const.
+///
+/// If the object name has to be set implement the send_sync() function.
 pub trait Syncable {
     /// The Class of the object as transmitted in the SyncMessage
     const CLASS: &'static str;
 
     /// Send a SyncMessage.
-    fn send_sync(&self, object_name: Option<&str>, function: &str, params: VariantList) {
+    fn send_sync(&self, function: &str, params: VariantList) {
         crate::message::signalproxy::SYNC_PROXY.get().unwrap().sync(
             Self::CLASS,
-            object_name,
+            None,
             function,
             params,
         );
@@ -128,7 +130,7 @@ where
     where
         Self: Sized,
     {
-        self.send_sync(None, "update", vec![self.to_network_map().into()]);
+        self.send_sync("update", vec![self.to_network_map().into()]);
     }
 
     /// Server -> Client: Update the whole object with received data
@@ -176,7 +178,7 @@ pub trait StatefulSyncableClient: Syncable + translation::NetworkMap {
     where
         Self: Sized,
     {
-        self.send_sync(None, "requestUpdate", vec![self.to_network_map().into()]);
+        self.send_sync("requestUpdate", vec![self.to_network_map().into()]);
     }
 }
 
