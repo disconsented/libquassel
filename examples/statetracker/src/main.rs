@@ -14,6 +14,7 @@ use libquassel::message::{
 };
 
 use tracing::debug;
+use tracing_subscriber::prelude::*;
 
 use crate::server::{Direction, Message, ServerWidget};
 
@@ -202,7 +203,24 @@ pub struct Syncer {
 }
 
 fn main() {
-    // pretty_env_logger::init();
+    // tracing_subscriber::fmt::fmt()
+    //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE)
+    //     .init();
+
+    let filter = tracing_subscriber::filter::Targets::new()
+        .with_default(tracing::Level::TRACE)
+        .with_target("druid", tracing::metadata::LevelFilter::OFF);
+
+    let env_filter = tracing_subscriber::EnvFilter::from_default_env();
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE),
+        )
+        .with(filter)
+        .with(env_filter)
+        .init();
 
     // describe the main window
     let main_window = WindowDesc::new(StateTracker::widget())
@@ -214,7 +232,6 @@ fn main() {
 
     // start the application
     AppLauncher::with_window(main_window)
-        .log_to_console()
         .delegate(StateTrackerDelegate)
         .launch(initial_state)
         .expect("Failed to launch application");

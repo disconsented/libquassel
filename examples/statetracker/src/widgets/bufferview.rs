@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use druid::widget::{Align, Label};
+use druid::widget::{Label};
 use druid::{lens, Lens, Point, WidgetPod};
 use druid::{widget::Flex, Widget};
 
@@ -48,8 +48,10 @@ impl Widget<Arc<BufferViewManager>> for BufferViewWidget {
     ) {
         let buffer_view_configs = lens!(BufferViewManager, buffer_view_configs);
 
-        let mut names: Flex<Arc<BufferViewManager>> = Flex::column();
-        let mut buffers: Flex<Arc<BufferViewManager>> = Flex::column();
+        let mut names: Flex<Arc<BufferViewManager>> = Flex::row();
+        let mut buffers: Flex<Arc<BufferViewManager>> = Flex::row();
+        let mut removed_buffers: Flex<Arc<BufferViewManager>> = Flex::row();
+        let mut temporarily_removed_buffers: Flex<Arc<BufferViewManager>> = Flex::row();
         // let mut expansions: Flex<Arc<BufferViewManager>> = Flex::column();
 
         // TODO optimise this whole thing
@@ -57,13 +59,20 @@ impl Widget<Arc<BufferViewManager>> for BufferViewWidget {
             for (_id, config) in configs {
                 names.add_child(Label::new(config.buffer_view_name.clone()));
                 buffers.add_child(Label::new(format!("{:?}", config.buffers)));
+                removed_buffers.add_child(Label::new(format!("{:?}", config.removed_buffers)));
+                temporarily_removed_buffers.add_child(Label::new(format!(
+                    "{:?}",
+                    config.temporarily_removed_buffers
+                )));
                 // expansions.add_child(Align::left(Label::new(alias.expansion.clone())));
             }
         });
 
-        let widget: Flex<Arc<BufferViewManager>> = Flex::row()
+        let widget: Flex<Arc<BufferViewManager>> = Flex::column()
             .with_flex_child(names, 1.0)
-            .with_flex_child(buffers, 1.0);
+            .with_flex_child(buffers, 1.0)
+            .with_flex_child(removed_buffers, 1.0)
+            .with_flex_child(temporarily_removed_buffers, 1.0);
         //     .with_flex_child(expansions, 1.0);
 
         self.inner = WidgetPod::new(widget).boxed();
