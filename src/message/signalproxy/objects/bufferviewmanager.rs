@@ -1,9 +1,6 @@
-use std::{collections::HashMap, convert::TryFrom, convert::TryInto};
+use std::collections::HashMap;
 
 use libquassel_derive::sync;
-use libquassel_derive::{NetworkList, NetworkMap};
-
-use crate::message::signalproxy::translation::Network;
 
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
@@ -49,6 +46,7 @@ impl BufferViewManager {
     }
 
     #[cfg(feature = "client")]
+    #[allow(unused_variables)]
     pub fn add_buffer_view_config(&mut self, id: i32) {
         // TODO init!("BufferViewConfig", id);
     }
@@ -165,7 +163,7 @@ impl super::NetworkMap for BufferViewManager {
         return res;
     }
 
-    fn from_network_map(input: &mut Self::Item) -> Self {
+    fn from_network_map(_input: &mut Self::Item) -> Self {
         // TODO Somehow do the initrequests for all the IDs we get here
         Self {
             buffer_view_configs: HashMap::new(),

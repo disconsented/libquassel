@@ -12,8 +12,6 @@ mod ircuser;
 mod network;
 mod networkinfo;
 
-use std::convert::TryInto;
-
 pub use aliasmanager::*;
 pub use buffersyncer::*;
 pub use bufferviewmanager::*;

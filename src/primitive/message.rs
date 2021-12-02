@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto, vec::Vec};
+use std::{collections::HashMap, vec::Vec};
 
 use failure::Error;
 

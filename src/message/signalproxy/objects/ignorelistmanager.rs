@@ -1,8 +1,6 @@
 use crate::message::signalproxy::translation::{Network, NetworkMap};
 use libquassel_derive::{NetworkList, NetworkMap};
 
-use std::convert::TryFrom;
-
 #[derive(Debug, Clone, PartialEq, NetworkList)]
 pub struct IgnoreListManager {
     #[network(rename = "IgnoreList", variant = "VariantMap", network, map)]

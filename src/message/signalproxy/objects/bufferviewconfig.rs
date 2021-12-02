@@ -1,5 +1,3 @@
-use std::{convert::TryFrom, convert::TryInto};
-
 use libquassel_derive::sync;
 use libquassel_derive::{NetworkList, NetworkMap};
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::{convert::TryInto, vec::Vec};
+use std::vec::Vec;
 
 use failure::Error;
 

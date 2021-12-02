@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{self, Cursor};

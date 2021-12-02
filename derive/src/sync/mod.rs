@@ -10,8 +10,8 @@ use syn::{
 #[derive(Debug)]
 struct Sync {
     name: Expr,
-    token: Token![,],
-    brace_token: token::Bracket,
+    _token: Token![,],
+    _brace_token: token::Bracket,
     fields: Punctuated<Expr, Token![,]>,
 }
 
@@ -20,8 +20,8 @@ impl Parse for Sync {
         let content;
         Ok(Sync {
             name: input.parse()?,
-            token: input.parse()?,
-            brace_token: bracketed!(content in input),
+            _token: input.parse()?,
+            _brace_token: bracketed!(content in input),
             fields: content.parse_terminated(Expr::parse)?,
         })
     }

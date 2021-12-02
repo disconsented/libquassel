@@ -1,10 +1,11 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::collections::HashMap;
 
-use crate::{message::Syncable, primitive::MessageType};
+use crate::{
+    message::{signalproxy::translation::Network, Syncable},
+    primitive::MessageType,
+};
 
 use libquassel_derive::{sync, NetworkList, NetworkMap};
-
-use crate::message::signalproxy::translation::Network;
 
 #[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferSyncer {
@@ -97,6 +98,7 @@ impl BufferSyncer {
 
     // TODO actually rename the buffer in whereever we should store buffers
     // and the BufferView
+    #[allow(unused_variables)]
     pub fn rename_buffer(&mut self, id: i32, name: String) {
         #[cfg(feature = "server")]
         sync!("renameBuffer", [id, name]);

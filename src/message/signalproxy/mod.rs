@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use crate::{
     deserialize::Deserialize,
     primitive::{Variant, VariantList},
@@ -30,6 +28,7 @@ use once_cell::sync::OnceCell;
 pub static SYNC_PROXY: OnceCell<SyncProxy> = OnceCell::new();
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SyncProxy {
     sync_channel: crossbeam_channel::Sender<SyncMessage>,
     rpc_channel: crossbeam_channel::Sender<RpcCall>,

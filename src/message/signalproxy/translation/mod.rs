@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 /**
 Quassel has 3 main ways to represent an object over the Network:
 

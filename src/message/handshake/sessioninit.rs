@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use crate::message::objects::Identity;
 use crate::primitive::{BufferInfo, Variant, VariantMap};
 use crate::HandshakeSerialize;
