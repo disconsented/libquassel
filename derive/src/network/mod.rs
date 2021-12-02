@@ -41,8 +41,6 @@ pub struct NetworkField {
 
     #[darling(default)]
     rename: Option<String>,
-    #[darling(default)]
-    override_type: Option<String>,
     #[darling(default, rename = "type")]
     typ: Option<String>,
     /// Variant to encapsulate this field
@@ -190,9 +188,7 @@ pub fn network_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 fn get_field_type(field: &NetworkField) -> syn::Type {
-    if let Some(override_type) = &field.override_type {
-        gen_type(override_type)
-    } else if let Some(typ) = &field.typ {
+    if let Some(typ) = &field.typ {
         gen_type(typ)
     } else {
         field.ty.clone()
