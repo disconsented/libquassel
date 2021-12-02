@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
 
-use crate::primitive::MessageType;
-use libquassel_derive::NetworkList;
+use crate::{message::Syncable, primitive::MessageType};
+
+use libquassel_derive::{sync, NetworkList, NetworkMap};
 
 use crate::message::signalproxy::translation::Network;
 
-#[derive(Debug, Clone, PartialEq, NetworkList)]
-#[network(repr = "list")]
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferSyncer {
     #[network(rename = "Activities", network, variant = "VariantList")]
     pub activities: HashMap<i32, MessageType>,
@@ -18,67 +18,167 @@ pub struct BufferSyncer {
     pub marker_line: HashMap<i32, i64>,
 }
 
-pub trait BufferSyncerServer {
-    fn activities(self: &Self) -> &HashMap<u32, MessageType>;
-    fn activities_mut(self: &mut Self) -> &mut HashMap<u32, MessageType>;
-
-    fn highlight_counts(self: &Self) -> &HashMap<u32, u32>;
-    fn highlight_counts_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn last_seen_msg(self: &Self) -> &HashMap<u32, u32>;
-    fn last_seen_msg_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn marker_line(self: &Self) -> &HashMap<u32, u32>;
-    fn marker_line_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn request_mark_buffer_as_read(buffer: u32);
-    fn request_merge_buffers_permanently(buffer1: u32, buffer2: u32);
-    fn request_purge_buffer_ids();
-    fn request_remove_buffer(buffer: u32);
-    fn request_rename_buffer(buffer: u32, new_name: String);
-
-    fn request_set_last_seen_msg(self: &mut Self, buffer: u32, msgid: u32) {
-        self.last_seen_msg_mut().insert(buffer, msgid);
+impl BufferSyncer {
+    pub fn request_mark_buffer_as_read(&mut self, id: i32) {
+        sync!("requestMarkBufferAsRead", [id]);
     }
 
-    fn request_set_marker_line(self: &mut Self, buffer: u32, msgid: u32) {
-        self.marker_line_mut().insert(buffer, msgid);
+    pub fn request_merge_buffers_permanently(&self, src_id: i32, target_id: i32) {
+        sync!("requestMergeBuffersPermanently", [src_id, target_id]);
+    }
+
+    pub fn request_purge_buffer_ids(&self) {
+        sync!("requestPurgeBufferIds", []);
+    }
+
+    pub fn request_remove_buffer(&self, id: i32) {
+        sync!("requestRemoveBuffer", [id]);
+    }
+
+    pub fn request_rename_buffer(&self, id: i32) {
+        sync!("requestRenameBuffer", [id]);
+    }
+
+    pub fn request_set_last_seen_msg(&self, id: i32, msgid: i32) {
+        sync!("requestSetLastSeenMsg", [id, msgid]);
+    }
+
+    pub fn request_set_marker_line(&self, id: i32, msgid: i32) {
+        sync!("requestSetMarkerLine", [id, msgid]);
+    }
+
+    // // S->C calls
+
+    pub fn mark_buffer_as_read(&mut self, id: i32) {
+        self.set_buffer_activity(id, MessageType::NONE);
+        self.set_highlight_count(id, 0);
+
+        #[cfg(feature = "server")]
+        sync!("markBufferAsRead", [id]);
+    }
+
+    pub fn merge_buffers_permanently(&mut self, target: i32, source: i32) {
+        if let Some(activities) = self.activities.remove(&source) {
+            *self.activities.entry(target).or_insert(MessageType::NONE) |= activities;
+        }
+
+        if let Some(highlight_counts) = self.highlight_counts.remove(&source) {
+            *self.highlight_counts.entry(target).or_default() += highlight_counts;
+        }
+
+        if let Some(last_seen_msg) = self.last_seen_msg.remove(&source) {
+            let target = self.last_seen_msg.entry(target).or_default();
+            if *target < last_seen_msg {
+                *target = last_seen_msg
+            };
+        }
+
+        if let Some(marker_line) = self.marker_line.remove(&source) {
+            let target = self.marker_line.entry(target).or_default();
+            if *target < marker_line {
+                *target = marker_line
+            };
+        }
+
+        #[cfg(feature = "server")]
+        sync!("mergeBuffersPermanently", [source, target]);
+    }
+
+    // TODO remove buffer from bufferviews
+    pub fn remove_buffer(&mut self, id: i32) {
+        self.activities.remove(&id);
+        self.highlight_counts.remove(&id);
+        self.last_seen_msg.remove(&id);
+        self.marker_line.remove(&id);
+
+        #[cfg(feature = "server")]
+        sync!("removeBuffer", [id]);
+    }
+
+    // TODO actually rename the buffer in whereever we should store buffers
+    // and the BufferView
+    pub fn rename_buffer(&mut self, id: i32, name: String) {
+        #[cfg(feature = "server")]
+        sync!("renameBuffer", [id, name]);
+    }
+
+    pub fn set_buffer_activity(&mut self, id: i32, activity: MessageType) {
+        *self.activities.entry(id).or_insert(MessageType::NONE) = activity;
+
+        #[cfg(feature = "server")]
+        sync!("setBufferActivity", [id, activity.bits()]);
+    }
+
+    pub fn set_highlight_count(&mut self, id: i32, count: i32) {
+        *self.highlight_counts.entry(id).or_default() = count;
+
+        #[cfg(feature = "server")]
+        sync!("setHighlightCount", [id, count]);
+    }
+
+    pub fn set_last_seen_msg(&mut self, id: i32, msg_id: i64) {
+        *self.last_seen_msg.entry(id).or_default() = msg_id;
+
+        #[cfg(feature = "server")]
+        sync!("setHighlightCount", [id, msg_id]);
+    }
+
+    pub fn set_marker_line(&mut self, id: i32, msg_id: i64) {
+        *self.marker_line.entry(id).or_default() = msg_id;
+
+        #[cfg(feature = "server")]
+        sync!("setHighlightCount", [id, msg_id]);
     }
 }
 
-pub trait BufferSyncerClient {
-    fn activities(self: &Self) -> &HashMap<u32, MessageType>;
-    fn activities_mut(self: &mut Self) -> &mut HashMap<u32, MessageType>;
-
-    fn highlight_counts(self: &Self) -> &HashMap<u32, u32>;
-    fn highlight_counts_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn last_seen_msg(self: &Self) -> &HashMap<u32, u32>;
-    fn last_seen_msg_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn marker_line(self: &Self) -> &HashMap<u32, u32>;
-    fn marker_line_mut(self: &mut Self) -> &mut HashMap<u32, u32>;
-
-    fn mark_buffer_as_read(buffer: u32);
-    fn merge_buffers_permanently(buffer1: u32, buffer2: u32);
-    fn remove_buffer(buffer: u32);
-    fn rename_buffer(buffer: u32, new_name: String);
-
-    fn set_buffer_activity(self: &mut Self, buffer: u32, activity: MessageType) {
-        self.activities_mut().insert(buffer, activity);
+#[cfg(feature = "client")]
+impl crate::message::StatefulSyncableClient for BufferSyncer {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "markBufferAsRead" => self.mark_buffer_as_read(get_param!(msg)),
+            "mergeBuffersPermanently" => {
+                self.merge_buffers_permanently(get_param!(msg), get_param!(msg))
+            }
+            "removeBuffer" => self.remove_buffer(get_param!(msg)),
+            "renameBuffer" => self.rename_buffer(get_param!(msg), get_param!(msg)),
+            "setBufferActivity" => self.set_buffer_activity(
+                get_param!(msg),
+                MessageType::from_bits(get_param!(msg)).unwrap_or(MessageType::NONE),
+            ),
+            "setHighlightCount" => self.set_highlight_count(get_param!(msg), get_param!(msg)),
+            "setLastSeenMsg" => self.set_last_seen_msg(get_param!(msg), get_param!(msg)),
+            "setMarkerLine" => self.set_marker_line(get_param!(msg), get_param!(msg)),
+            _ => (),
+        }
     }
+}
 
-    fn set_highlight_count(self: &mut Self, buffer: u32, count: u32) {
-        self.highlight_counts_mut().insert(buffer, count);
+#[cfg(feature = "server")]
+impl crate::message::StatefulSyncableServer for BufferSyncer {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "requestMarkBufferAsRead" => self.mark_buffer_as_read(get_param!(msg)),
+            "requestMergeBuffersPermanently" => {
+                self.merge_buffers_permanently(get_param!(msg), get_param!(msg))
+            }
+            "requestPurgeBufferIds" => (),
+            "requestRemoveBuffer" => self.remove_buffer(get_param!(msg)),
+            "requestRenameBuffer" => self.rename_buffer(get_param!(msg), get_param!(msg)),
+            "requestSetLastSeenMsg" => self.set_last_seen_msg(get_param!(msg), get_param!(msg)),
+            "requestSetMarkerLine" => self.set_marker_line(get_param!(msg), get_param!(msg)),
+            _ => (),
+        }
     }
+}
 
-    fn set_last_seen_msg(self: &mut Self, buffer: u32, msgid: u32) {
-        self.last_seen_msg_mut().insert(buffer, msgid);
-    }
-
-    fn set_marker_line(self: &mut Self, buffer: u32, msgid: u32) {
-        self.marker_line_mut().insert(buffer, msgid);
-    }
+impl Syncable for BufferSyncer {
+    const CLASS: &'static str = "BufferSyncer";
 }
 
 #[cfg(test)]

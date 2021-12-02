@@ -57,3 +57,10 @@ macro_rules! s {
         std::string::String::from($values)
     };
 }
+
+#[macro_export]
+macro_rules! get_param {
+    ( $msg:expr ) => {
+        $msg.params.remove(0).try_into().unwrap()
+    };
+}
