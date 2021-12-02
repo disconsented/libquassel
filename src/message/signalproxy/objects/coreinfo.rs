@@ -1,22 +1,58 @@
 use libquassel_derive::{NetworkList, NetworkMap};
 
 use crate::message::signalproxy::translation::NetworkMap;
+use crate::message::Syncable;
 use crate::primitive::{DateTime, StringList};
 
-#[derive(Debug, Clone, PartialEq, NetworkMap, NetworkList)]
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreInfo {
     #[network(rename = "coreData", variant = "VariantMap", network)]
     core_data: CoreData,
 }
 
-// // S->C calls
-// setCoreData(coreData: QVariantMap)
-// /**
-//  * Replaces all properties of the object with the content of the
-//  * "properties" parameter. This parameter is in network representation.
-//  */
-// update(properties: QVariantMap)
+impl CoreInfo {
+    pub fn set_core_data(&mut self, data: CoreData) {
+        #[cfg(feature = "server")]
+        libquassel_derive::sync!("setCoreData", [data.to_network_map()]);
+
+        self.core_data = data;
+    }
+}
+
+#[cfg(feature = "client")]
+impl crate::message::StatefulSyncableClient for CoreInfo {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "setCoreData" => self.set_core_data(CoreData::from_network_map(&mut get_param!(msg))),
+            _ => (),
+        }
+    }
+
+    /// Not Implemented
+    fn request_update(&mut self)
+    where
+        Self: Sized,
+    {
+    }
+}
+
+#[cfg(feature = "server")]
+impl crate::message::StatefulSyncableServer for CoreInfo {
+    /// Not Implemented
+    fn request_update(&mut self, mut _param: <CoreInfo as NetworkMap>::Item)
+    where
+        Self: Sized,
+    {
+    }
+}
+
+impl Syncable for CoreInfo {
+    const CLASS: &'static str = "CoreInfo";
+}
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
