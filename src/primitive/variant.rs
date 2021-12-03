@@ -77,6 +77,12 @@ impl From<String> for Variant {
     }
 }
 
+impl From<&str> for Variant {
+    fn from(input: &str) -> Self {
+        Self::String(input.to_owned())
+    }
+}
+
 /// Implements the Network trait genericly for everything that
 /// can be a VariantList / Vec<T>
 impl<T> crate::message::Network for Vec<T>

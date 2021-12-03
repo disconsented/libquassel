@@ -1,34 +1,181 @@
-use crate::message::signalproxy::translation::{Network, NetworkMap};
-use libquassel_derive::{NetworkList, NetworkMap};
+use crate::message::{
+    signalproxy::translation::{Network, NetworkMap},
+    Syncable,
+};
 
-#[derive(Debug, Clone, PartialEq, NetworkList)]
+use libquassel_derive::{sync, NetworkList, NetworkMap};
+
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct IgnoreListManager {
-    #[network(rename = "IgnoreList", variant = "VariantMap", network, map)]
+    #[quassel(name = "IgnoreList")]
+    #[network(variant = "VariantMap", network, map)]
     ignore_list: Vec<IgnoreListItem>,
-    // // C->S calls
+}
 
-    // requestAddIgnoreListItem(type: Int, ignoreRule: QString,
-    //     isRegEx: Bool, strictness: Int, scope: Int, scopeRule: QString,
-    //     isActive: Bool)
-    // requestRemoveIgnoreListItem(ignoreRule: QString)
-    // requestToggleIgnoreRule(ignoreRule: QString)
-    // /**
-    //  * Replaces all properties of the object with the content of the
-    //  * "properties" parameter. This parameter is in network representation.
-    //  */
-    // requestUpdate(properties: QVariantMap)
+impl IgnoreListManager {
+    /// Get a reference to a specific ignore list by ID.
+    pub fn ignore_list_item(&self, rule: &str) -> Option<&IgnoreListItem> {
+        if let Some(position) = self
+            .ignore_list
+            .iter()
+            .position(|item| item.ignore_rule.as_str() == rule)
+        {
+            self.ignore_list.get(position)
+        } else {
+            None
+        }
+    }
 
-    // // S->C calls
+    /// Get a mutable reference to a specific highlight rule by ID.
+    pub fn ignore_list_item_mut(&mut self, rule: &str) -> Option<&mut IgnoreListItem> {
+        if let Some(position) = self
+            .ignore_list
+            .iter()
+            .position(|item| item.ignore_rule.as_str() == rule)
+        {
+            self.ignore_list.get_mut(position)
+        } else {
+            None
+        }
+    }
 
-    // addIgnoreListItem(type: Int, ignoreRule: QString, isRegEx: Bool,
-    //     strictness: Int, scope: Int, scopeRule: QString, isActive: Bool)
-    // removeIgnoreListItem(ignoreRule: QString)
-    // toggleIgnoreRule(ignoreRule: QString)
-    // /**
-    //  * Replaces all properties of the object with the content of the
-    //  * "properties" parameter. This parameter is in network representation.
-    //  */
-    // update(properties: QVariantMap)
+    pub fn request_add_ignore_list_item(
+        &self,
+        IgnoreListItem {
+            ignore_type,
+            ignore_rule,
+            is_regex,
+            strictness,
+            scope,
+            scope_rule,
+            is_active,
+        }: IgnoreListItem,
+    ) {
+        sync!(
+            "requestAddIgnoreListItem",
+            [
+                ignore_type.to_network(),
+                ignore_rule,
+                is_regex,
+                strictness.to_network(),
+                scope.to_network(),
+                scope_rule,
+                is_active
+            ]
+        )
+    }
+
+    pub fn request_remove_ignore_list_item(&self, rule: String) {
+        sync!("requestRemoveIgnoreListItem", [rule])
+    }
+
+    pub fn request_toggle_ignore_rule(&self, rule: String) {
+        sync!("requestToggleIgnoreRule", [rule])
+    }
+
+    pub fn add_ignore_list_item(&mut self, item: IgnoreListItem) {
+        #[cfg(feature = "server")]
+        sync!(
+            "addIgnoreListItem",
+            [
+                item.ignore_type.to_network(),
+                item.ignore_rule.clone(),
+                item.is_regex,
+                item.strictness.to_network(),
+                item.scope.to_network(),
+                item.scope_rule.clone(),
+                item.is_active
+            ]
+        );
+
+        if self.ignore_list_item(&item.ignore_rule).is_none() {
+            self.ignore_list.push(item)
+        };
+    }
+
+    pub fn remove_ignore_list_item(&mut self, rule: &str) {
+        if let Some(position) = self
+            .ignore_list
+            .iter()
+            .position(|item| item.ignore_rule.as_str() == rule)
+        {
+            self.ignore_list.remove(position);
+        };
+
+        #[cfg(feature = "server")]
+        sync!("removeIgnoreListItem", [rule])
+    }
+
+    pub fn toggle_ignore_rule(&mut self, rule: &str) {
+        if let Some(item) = self.ignore_list_item_mut(rule) {
+            item.is_active = !item.is_active
+        }
+
+        #[cfg(feature = "server")]
+        sync!("toggleIgnoreRule", [rule])
+    }
+}
+
+#[cfg(feature = "client")]
+impl crate::message::StatefulSyncableClient for IgnoreListManager {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "addIgnoreListItem" => self.add_ignore_list_item(IgnoreListItem {
+                ignore_type: IgnoreType::from_network(&mut get_param!(msg)),
+                ignore_rule: get_param!(msg),
+                is_regex: get_param!(msg),
+                strictness: StrictnessType::from_network(&mut get_param!(msg)),
+                scope: ScopeType::from_network(&mut get_param!(msg)),
+                scope_rule: get_param!(msg),
+                is_active: get_param!(msg),
+            }),
+            "removeIgnoreListItem" => {
+                let rule: String = get_param!(msg);
+                self.remove_ignore_list_item(&rule);
+            }
+            "toggleIgnoreRule" => {
+                let rule: String = get_param!(msg);
+                self.toggle_ignore_rule(&rule);
+            }
+            _ => (),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl crate::message::StatefulSyncableServer for IgnoreListManager {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            "requestAddIgnoreListItem" => self.add_ignore_list_item(IgnoreListItem {
+                ignore_type: IgnoreType::from_network(&mut get_param!(msg)),
+                ignore_rule: get_param!(msg),
+                is_regex: get_param!(msg),
+                strictness: StrictnessType::from_network(&mut get_param!(msg)),
+                scope: ScopeType::from_network(&mut get_param!(msg)),
+                scope_rule: get_param!(msg),
+                is_active: get_param!(msg),
+            }),
+            "requestRemoveIgnoreListItem" => {
+                let rule: String = get_param!(msg);
+                self.remove_ignore_list_item(&rule);
+            }
+            "requestToggleIgnoreRule" => {
+                let rule: String = get_param!(msg);
+                self.toggle_ignore_rule(&rule);
+            }
+            _ => (),
+        }
+    }
+}
+
+impl Syncable for IgnoreListManager {
+    const CLASS: &'static str = "IgnoreListManager";
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
@@ -39,7 +186,7 @@ pub struct IgnoreListItem {
     #[network(rename = "ignoreRule")]
     ignore_rule: String,
     #[network(rename = "isRegEx")]
-    is_reg_ex: bool,
+    is_regex: bool,
     #[network(rename = "strictness", network, type = "u8")]
     strictness: StrictnessType,
     #[network(rename = "scope", network, type = "u8")]
