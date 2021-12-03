@@ -83,7 +83,17 @@ pub fn network_map(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let network = Network::from_derive_input(&input).unwrap();
 
-    let fields = parse_fields(&input);
+    let mut fields = parse_fields(&input);
+    let quassel_fields = super::QuasselField::parse(&input);
+
+    fields
+        .iter_mut()
+        .zip(quassel_fields)
+        .for_each(|(field, qfield)| {
+            if field.rename.is_none() {
+                field.rename = Some(qfield.name)
+            }
+        });
 
     let name = &input.ident;
 
