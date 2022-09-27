@@ -59,7 +59,7 @@ authenticators = []
 # Enable the test crate/feature for running benchmarks
 bench = []
 
-default = []
+default = ["all-quassel-features", "client"]
 
 [package.metadata.docs.rs]
 # document all features
@@ -76,4 +76,4 @@ tokio-test = { version = "0.4" }
 pretty_assertions = "0.6"
 
 [workspace]
-members = ["derive", "examples/quasselproxy", "examples/statetracker"]
+members = ["derive"]

@@ -1,5 +1,6 @@
-Cargo.lock
 /target
+/.direnv
+/result
 **/*.rs.bk
 examples/testserver
 lcov.info
