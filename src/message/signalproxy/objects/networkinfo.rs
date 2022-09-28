@@ -5,7 +5,7 @@ use libquassel_derive::NetworkList;
 use crate::message::objects::network::NetworkServer;
 use crate::message::signalproxy::translation::NetworkMap;
 
-#[derive(Debug, Clone, PartialEq, NetworkList)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkList)]
 pub struct NetworkInfo {
     #[network(rename = "networkName")]
     pub network_name: String,

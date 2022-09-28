@@ -10,22 +10,58 @@ use crate::primitive::{Variant, VariantList, VariantMap};
 
 use super::{ircchannel::IrcChannel, ircuser::IrcUser, networkinfo::NetworkInfo};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Network {
     my_nick: String,
     latency: i32,
     current_server: String,
     is_connected: bool,
     connection_state: ConnectionState,
-    // prefixes: Vec<char>,
-    // prefix_modes: Vec<char>,
-    // channel_modes: HashMap<ChannelModeType, Vec<char>>,
+    prefixes: Vec<char>,
+    prefix_modes: Vec<char>,
+    channel_modes: HashMap<ChannelModeType, String>,
     irc_users: HashMap<String, IrcUser>,
     irc_channels: HashMap<String, IrcChannel>,
     supports: HashMap<String, String>,
     caps: HashMap<String, String>,
     caps_enabled: Vec<String>,
     network_info: NetworkInfo,
+}
+
+impl Network {
+    /// The `channel_modes` field is populated by the ``supports["CHANMODES"]` string,
+    /// which is represented as the channel mode types a,b,c,d in a comma sepperated string.
+    fn determine_channel_mode_types(&mut self) {
+        let mut modes: Vec<&str> = self.supports.get("CHANMODES").unwrap().split(',').collect();
+
+        self.channel_modes.insert(ChannelModeType::DChanmode, modes.pop().unwrap().to_owned());
+        self.channel_modes.insert(ChannelModeType::CChanmode, modes.pop().unwrap().to_owned());
+        self.channel_modes.insert(ChannelModeType::BChanmode, modes.pop().unwrap().to_owned());
+        self.channel_modes.insert(ChannelModeType::AChanmode, modes.pop().unwrap().to_owned());
+    }
+
+    fn determine_prefixes(&mut self) {
+        let default_prefixes = vec!['~', '&', '@', '%', '+'];
+        let default_prefix_modes = vec!['q', 'a', 'o', 'h', 'v'];
+
+        match self.supports.get("PREFIX") {
+            Some(prefix) => {
+                if prefix.starts_with('(') {
+                    let (prefix_modes, prefixes) = prefix[1..].split_once(')').unwrap();
+
+                    self.prefix_modes = prefix_modes.chars().collect();
+                    self.prefixes = prefixes.chars().collect();
+                } else {
+                    self.prefixes = default_prefixes;
+                    self.prefix_modes = default_prefix_modes;
+                }
+            },
+            None => {
+                self.prefixes = default_prefixes;
+                self.prefix_modes = default_prefix_modes;
+            },
+        }
+    }
 }
 
 impl crate::message::signalproxy::NetworkList for Network {
@@ -114,7 +150,7 @@ impl crate::message::signalproxy::NetworkList for Network {
 
         log::trace!("users and channels: {:#?}", users_and_channels);
 
-        Self {
+        let mut network = Self {
             my_nick: {
                 i.position(|x| *x == Variant::ByteArray(String::from("myNick")))
                     .unwrap();
@@ -146,6 +182,9 @@ impl crate::message::signalproxy::NetworkList for Network {
                 i.next().unwrap().try_into().unwrap()
             })
             .unwrap(),
+            prefixes: Vec::new(),
+            prefix_modes: Vec::new(),
+            channel_modes: HashMap::with_capacity(4),
             irc_users: {
                 match users_and_channels.get("Users") {
                     Some(users) => {
@@ -203,7 +242,12 @@ impl crate::message::signalproxy::NetworkList for Network {
                 var.into_iter().map(|v| v.try_into().unwrap()).collect()
             },
             network_info: NetworkInfo::from_network_list(input),
-        }
+        };
+
+        network.determine_channel_mode_types();
+        network.determine_prefixes();
+
+        return network;
     }
 }
 
@@ -323,6 +367,36 @@ mod tests {
             networkserver_get_network()
         )
     }
+
+    #[test]
+    fn network_determine_channel_modes() {
+        let mut network = Network::default();
+
+        network.supports.insert(s!("CHANMODES"), s!("IXZbegw,k,FHJLWdfjlx,ABCDKMNOPQRSTcimnprstuz"));
+
+        network.determine_channel_mode_types();
+
+        assert_eq!(network.channel_modes.get(&ChannelModeType::AChanmode).unwrap(), "IXZbegw");
+        assert_eq!(network.channel_modes.get(&ChannelModeType::BChanmode).unwrap(), "k");
+        assert_eq!(network.channel_modes.get(&ChannelModeType::CChanmode).unwrap(), "FHJLWdfjlx");
+        assert_eq!(network.channel_modes.get(&ChannelModeType::DChanmode).unwrap(), "ABCDKMNOPQRSTcimnprstuz");
+    }
+
+    #[test]
+    fn network_determine_prefixes() {
+        let mut network = Network::default();
+        network.determine_prefixes();
+
+        assert_eq!(network.prefixes, vec!['~', '&', '@', '%', '+']);
+        assert_eq!(network.prefix_modes, vec!['q', 'a', 'o', 'h', 'v']);
+
+        network.supports.insert(s!("PREFIX"), s!("(Yohv)!@%+"));
+
+        network.determine_prefixes();
+
+        assert_eq!(network.prefixes, vec!['!', '@', '%', '+']);
+        assert_eq!(network.prefix_modes, vec!['Y', 'o', 'h', 'v']);
+    }
 }
 
 #[allow(dead_code)]
@@ -337,8 +411,14 @@ enum ConnectionState {
     Disconnecting = 0x05,
 }
 
+impl Default for ConnectionState {
+    fn default() -> Self {
+        Self::Disconnected
+    }
+}
+
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, FromPrimitive, ToPrimitive)]
 #[repr(C)]
 enum ChannelModeType {
     NotAChanmode = 0x00,
