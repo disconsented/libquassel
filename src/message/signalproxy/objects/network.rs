@@ -29,6 +29,14 @@ pub struct Network {
 }
 
 impl Network {
+    pub fn get_channel_mode_type(&self, mode: char) -> ChannelModeType {
+        if let Some((mode_type, _)) = self.channel_modes.iter().find(|(_, v)| v.contains(mode)) {
+            *mode_type
+        } else {
+            ChannelModeType::NotAChanmode
+        }
+    }
+
     /// The `channel_modes` field is populated by the ``supports["CHANMODES"]` string,
     /// which is represented as the channel mode types a,b,c,d in a comma sepperated string.
     fn determine_channel_mode_types(&mut self) {
@@ -383,6 +391,20 @@ mod tests {
     }
 
     #[test]
+    fn network_get_channel_mode_type() {
+        let mut network = Network::default();
+
+        network.supports.insert(s!("CHANMODES"), s!("IXZbegw,k,FHJLWdfjlx,ABCDKMNOPQRSTcimnprstuz"));
+        network.determine_channel_mode_types();
+
+        assert_eq!(network.get_channel_mode_type('b'), ChannelModeType::AChanmode);
+        assert_eq!(network.get_channel_mode_type('k'), ChannelModeType::BChanmode);
+        assert_eq!(network.get_channel_mode_type('W'), ChannelModeType::CChanmode);
+        assert_eq!(network.get_channel_mode_type('D'), ChannelModeType::DChanmode);
+        assert_eq!(network.get_channel_mode_type('E'), ChannelModeType::NotAChanmode);
+    }
+
+    #[test]
     fn network_determine_prefixes() {
         let mut network = Network::default();
         network.determine_prefixes();
@@ -418,9 +440,9 @@ impl Default for ConnectionState {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Eq, Hash, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, FromPrimitive, ToPrimitive)]
 #[repr(C)]
-enum ChannelModeType {
+pub enum ChannelModeType {
     NotAChanmode = 0x00,
     AChanmode = 0x01,
     BChanmode = 0x02,

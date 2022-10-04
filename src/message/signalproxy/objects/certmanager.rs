@@ -1,10 +1,10 @@
 use libquassel_derive::{NetworkList, NetworkMap};
 
-use crate::message::Syncable;
+use crate::message::{Syncable, Class};
 #[allow(unused_imports)]
 use crate::primitive::Variant;
 
-#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
+#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap, Default)]
 pub struct CertManager {
     #[network(rename = "sslKey", variant = "ByteArray")]
     pub ssl_key: String,
@@ -46,5 +46,5 @@ impl crate::message::StatefulSyncableClient for CertManager {
 impl crate::message::StatefulSyncableServer for CertManager {}
 
 impl Syncable for CertManager {
-    const CLASS: &'static str = "CertManager";
+    const CLASS: Class = Class::CertManager;
 }

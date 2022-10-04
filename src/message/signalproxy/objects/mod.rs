@@ -1,5 +1,6 @@
 mod aliasmanager;
 mod buffersyncer;
+mod backlogmanager;
 mod bufferviewmanager;
 mod bufferviewconfig;
 mod certmanager;
@@ -14,6 +15,7 @@ mod networkinfo;
 
 pub use aliasmanager::*;
 pub use buffersyncer::*;
+pub use backlogmanager::*;
 pub use bufferviewmanager::*;
 pub use bufferviewconfig::*;
 pub use certmanager::*;

@@ -1,11 +1,11 @@
 use crate::message::{
     signalproxy::translation::{Network, NetworkMap},
-    Syncable,
+    Syncable, Class,
 };
 
 use libquassel_derive::{sync, NetworkList, NetworkMap};
 
-#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct IgnoreListManager {
     #[quassel(name = "IgnoreList")]
     #[network(variant = "VariantMap", network, map)]
@@ -175,7 +175,7 @@ impl crate::message::StatefulSyncableServer for IgnoreListManager {
 }
 
 impl Syncable for IgnoreListManager {
-    const CLASS: &'static str = "IgnoreListManager";
+    const CLASS: Class = Class::IgnoreListManager;
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]

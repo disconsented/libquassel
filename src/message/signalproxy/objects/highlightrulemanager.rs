@@ -4,6 +4,7 @@ use num_traits::{FromPrimitive, ToPrimitive};
 
 use libquassel_derive::{NetworkList, NetworkMap};
 
+use crate::message::Class;
 use crate::message::signalproxy::translation::{Network, NetworkMap};
 
 #[allow(unused_imports)]
@@ -13,7 +14,7 @@ use crate::message::StatefulSyncableServer;
 
 use crate::message::Syncable;
 
-#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct HighlightRuleManager {
     #[network(rename = "HighlightRuleList", variant = "VariantMap", network, map)]
     highlight_rule_list: Vec<HighlightRule>,
@@ -205,7 +206,7 @@ impl StatefulSyncableServer for HighlightRuleManager {
 }
 
 impl Syncable for HighlightRuleManager {
-    const CLASS: &'static str = "HighlightRuleManager";
+    const CLASS: Class = Class::HighlightRuleManager;
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
@@ -214,13 +215,13 @@ pub struct HighlightRule {
     id: i32,
     #[network(variant = "StringList")]
     name: String,
-    #[network(rename = "isRegEx")]
+    #[quassel(name = "isRegEx")]
     is_regex: bool,
-    #[network(rename = "isCaseSensitive")]
+    #[quassel(name = "isCaseSensitive")]
     is_case_sensitive: bool,
-    #[network(rename = "isEnabled")]
+    #[quassel(name = "isEnabled")]
     is_enabled: bool,
-    #[network(rename = "isInverse")]
+    #[quassel(name = "isInverse")]
     is_inverse: bool,
     #[network(variant = "StringList")]
     sender: String,
@@ -228,8 +229,9 @@ pub struct HighlightRule {
     channel: String,
 }
 
-#[derive(Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Default, Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum HighlightNickType {
+    #[default]
     NoNick = 0x00,
     CurrentNick = 0x01,
     AllNicks = 0x02,
@@ -253,20 +255,20 @@ mod tests {
     use crate::message::signalproxy::translation::NetworkList;
     use crate::primitive::{Variant, VariantList};
 
-    use pretty_assertions::assert_eq;
+    // use pretty_assertions::assert_eq;
 
     fn get_network() -> VariantList {
         vec![
             Variant::ByteArray(s!("HighlightRuleList")),
             Variant::VariantMap(map! {
-                s!("isInverse") => Variant::VariantList(vec![Variant::bool(false)]),
-                s!("isEnabled") => Variant::VariantList(vec![Variant::bool(true)]),
-                s!("channel") => Variant::StringList(vec![s!("#test")]),
-                s!("sender") => Variant::StringList(vec![s!("testuser")]),
-                s!("isCaseSensitive") => Variant::VariantList(vec![Variant::bool(false)]),
-                s!("isRegEx") => Variant::VariantList(vec![Variant::bool(false)]),
-                s!("name") => Variant::StringList(vec![s!("testrule")]),
                 s!("id") => Variant::VariantList(vec![Variant::i32(1)]),
+                s!("name") => Variant::StringList(vec![s!("testrule")]),
+                s!("isRegEx") => Variant::VariantList(vec![Variant::bool(false)]),
+                s!("isCaseSensitive") => Variant::VariantList(vec![Variant::bool(false)]),
+                s!("isEnabled") => Variant::VariantList(vec![Variant::bool(true)]),
+                s!("isInverse") => Variant::VariantList(vec![Variant::bool(false)]),
+                s!("sender") => Variant::StringList(vec![s!("testuser")]),
+                s!("channel") => Variant::StringList(vec![s!("#test")]),
             }),
             Variant::ByteArray(s!("highlightNick")),
             Variant::i32(1),
@@ -274,6 +276,39 @@ mod tests {
             Variant::bool(false),
         ]
     }
+
+
+
+// [
+//     ByteArray("HighlightRuleList"),
+//     VariantMap({
+//         "isCaseSensitive": VariantList([bool(false)]),
+//         "isEnabled": VariantList([bool(true)]),
+//         "": StringList(["#test"]),
+//         "isRegEx": VariantList([bool(false)]),
+//         "isInverse": VariantList([bool(false)])}),
+//     ByteArray("highlightNick"),
+//     i32(1),
+//     ByteArray("nicksCaseSensitive"),
+//     bool(false)
+// ]
+
+// [
+//     ByteArray("HighlightRuleList"),
+//     VariantMap({
+//         "name": StringList(["testrule"]),
+//         "isEnabled": VariantList([bool(true)]),
+//         "sender": StringList(["testuser"]),
+//         "isInverse": VariantList([bool(false)]),
+//         "isCaseSensitive": VariantList([bool(false)]),
+//         "isRegEx": VariantList([bool(false)]),
+//         "id": VariantList([i32(1)]),
+//         "channel": StringList(["#test"])}),
+//     ByteArray("highlightNick"),
+//     i32(1),
+//     ByteArray("nicksCaseSensitive"),
+//     bool(false)
+// ]
 
     fn get_runtime() -> HighlightRuleManager {
         HighlightRuleManager {

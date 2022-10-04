@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use libquassel_derive::sync;
 
+use crate::message::Class;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
@@ -12,7 +13,7 @@ use crate::primitive::{Variant, VariantList, VariantMap};
 
 use super::BufferViewConfig;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct BufferViewManager {
     pub buffer_view_configs: HashMap<i32, BufferViewConfig>,
 }
@@ -118,7 +119,7 @@ impl StatefulSyncableServer for BufferViewManager {
 }
 
 impl Syncable for BufferViewManager {
-    const CLASS: &'static str = "BufferViewManager";
+    const CLASS: Class = Class::BufferViewManager;
 }
 
 impl super::NetworkList for BufferViewManager {

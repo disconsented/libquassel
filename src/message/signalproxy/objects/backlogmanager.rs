@@ -52,7 +52,7 @@ use crate::primitive::VariantList;
 
 /// Receive and Request Backlog
 /// All "request" functions are Client to Server and all "receive" functions are Server to Client
-#[derive(Clone, Debug, std::cmp::PartialEq)]
+#[derive(Clone, Debug, std::cmp::PartialEq, Default)]
 pub struct BacklogManager {}
 
 impl BacklogManager {

@@ -37,11 +37,21 @@ pub struct SyncProxy {
 /// SyncProxy sends sync and rpc messages
 impl SyncProxy {
     /// Initialize the global SYNC_PROXY object and return receiver ends for the SyncMessage and RpcCall channels
-    pub fn init(cap: usize) -> (crossbeam_channel::Receiver<SyncMessage>, crossbeam_channel::Receiver<RpcCall>) {
+    pub fn init(
+        cap: usize,
+    ) -> (
+        crossbeam_channel::Receiver<SyncMessage>,
+        crossbeam_channel::Receiver<RpcCall>,
+    ) {
         let (sync_tx, sync_rx) = crossbeam_channel::bounded(cap);
         let (rpc_tx, rpc_rx) = crossbeam_channel::bounded(cap);
 
-        SYNC_PROXY.set(SyncProxy { sync_channel: sync_tx, rpc_channel: rpc_tx }).unwrap();
+        SYNC_PROXY
+            .set(SyncProxy {
+                sync_channel: sync_tx,
+                rpc_channel: rpc_tx,
+            })
+            .unwrap();
 
         (sync_rx, rpc_rx)
     }
@@ -49,13 +59,13 @@ impl SyncProxy {
     /// Send a SyncMessage
     fn sync(
         &self,
-        class_name: &str,
+        class_name: Class,
         object_name: Option<&str>,
         function: &str,
         params: VariantList,
     ) {
         let msg = SyncMessage {
-            class_name: class_name.to_string(),
+            class_name,
             object_name: object_name.unwrap_or("").to_string(),
             slot_name: function.to_string(),
             params,
@@ -77,7 +87,7 @@ impl SyncProxy {
 /// If the object name has to be set implement the send_sync() function.
 pub trait Syncable {
     /// The Class of the object as transmitted in the SyncMessage
-    const CLASS: &'static str;
+    const CLASS: Class;
 
     /// Send a SyncMessage.
     fn send_sync(&self, function: &str, params: VariantList) {
@@ -95,6 +105,13 @@ pub trait Syncable {
             .get()
             .unwrap()
             .rpc(function, params);
+    }
+
+    fn init(&mut self, data: Self)
+    where
+        Self: Sized,
+    {
+        *self = data
     }
 }
 
@@ -157,7 +174,8 @@ pub trait StatefulSyncableClient: Syncable + translation::NetworkMap {
         }
     }
 
-    fn sync_custom(&mut self, msg: crate::message::SyncMessage)
+    #[allow(unused_mut)]
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
     where
         Self: Sized,
     {

@@ -1,14 +1,14 @@
 use libquassel_derive::{NetworkList, NetworkMap};
 
 use crate::message::signalproxy::translation::NetworkMap;
-use crate::message::Syncable;
+use crate::message::{Syncable, Class};
 use crate::primitive::{DateTime, StringList};
 
-#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreInfo {
     #[network(rename = "coreData", variant = "VariantMap", network)]
-    core_data: CoreData,
+    pub core_data: CoreData,
 }
 
 impl CoreInfo {
@@ -51,48 +51,60 @@ impl crate::message::StatefulSyncableServer for CoreInfo {
 }
 
 impl Syncable for CoreInfo {
-    const CLASS: &'static str = "CoreInfo";
+    const CLASS: Class = Class::CoreInfo;
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreData {
     #[network(rename = "quasselVersion")]
-    quassel_version: String,
+    pub quassel_version: String,
     #[network(rename = "quasselBuildDate")]
-    quassel_build_date: String,
+    pub quassel_build_date: String,
     #[network(rename = "startTime")]
-    start_time: DateTime,
+    pub start_time: DateTime,
     #[network(rename = "sessionConnectedClients")]
-    session_connected_clients: i32,
+    pub session_connected_clients: i32,
     #[network(
         rename = "sessionConnectedClientData",
         variant = "VariantList",
         network,
         map
     )]
-    session_connected_client_data: Vec<ConnectedClient>,
+    pub session_connected_client_data: Vec<ConnectedClient>,
+}
+
+impl Default for CoreData {
+    fn default() -> Self {
+        Self {
+            quassel_version: Default::default(),
+            quassel_build_date: Default::default(),
+            start_time:DateTime::unix_epoch(),
+            session_connected_clients: Default::default(),
+            session_connected_client_data: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "map")]
 pub struct ConnectedClient {
     #[network(rename = "id")]
-    id: i32,
+    pub id: i32,
     #[network(rename = "remoteAddress")]
-    remote_address: String,
-    #[network(rename = "location")]
-    location: String,
+    pub remote_address: String,
+    // #[network(rename = "location")]
+    // location: String,
     #[network(rename = "clientVersion")]
-    client_version: String,
+    pub client_version: String,
     #[network(rename = "clientVersionDate")]
-    client_version_date: String,
+    pub client_version_date: String,
     #[network(rename = "connectedSince")]
-    connected_since: DateTime,
+    pub connected_since: DateTime,
     #[network(rename = "secure")]
-    secure: bool,
+    pub secure: bool,
     #[network(rename = "features")]
-    features: i32,
+    pub features: u32,
     #[network(rename = "featureList")]
-    feature_list: StringList,
+    pub feature_list: StringList,
 }

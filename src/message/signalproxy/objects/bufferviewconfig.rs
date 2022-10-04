@@ -7,7 +7,7 @@ use crate::message::signalproxy::translation::Network;
 use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableServer;
-use crate::message::Syncable;
+use crate::message::{Syncable, Class};
 
 use crate::primitive::VariantList;
 
@@ -206,7 +206,7 @@ impl StatefulSyncableServer for BufferViewConfig {
 }
 
 impl Syncable for BufferViewConfig {
-    const CLASS: &'static str = "BufferViewConfig";
+    const CLASS: Class = Class::BufferViewConfig;
 
     fn send_sync(&self, function: &str, params: VariantList) {
         crate::message::signalproxy::SYNC_PROXY.get().unwrap().sync(

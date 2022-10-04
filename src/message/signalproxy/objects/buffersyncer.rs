@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    message::{signalproxy::translation::Network, Syncable},
+    message::{signalproxy::translation::Network, Syncable, Class},
     primitive::MessageType,
 };
 
 use libquassel_derive::{sync, NetworkList, NetworkMap};
 
-#[derive(Debug, Clone, PartialEq, NetworkList, NetworkMap)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferSyncer {
     #[network(rename = "Activities", network, variant = "VariantList")]
     pub activities: HashMap<i32, MessageType>,
@@ -180,7 +180,7 @@ impl crate::message::StatefulSyncableServer for BufferSyncer {
 }
 
 impl Syncable for BufferSyncer {
-    const CLASS: &'static str = "BufferSyncer";
+    const CLASS: Class = Class::BufferSyncer;
 }
 
 #[cfg(test)]

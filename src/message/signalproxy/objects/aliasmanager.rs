@@ -1,5 +1,8 @@
+#[allow(unused_imports)]
+use libquassel_derive::sync;
 use libquassel_derive::{NetworkList, NetworkMap};
 
+use crate::message::Class;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
@@ -15,7 +18,7 @@ use crate::primitive::VariantMap;
 /// AliasManager
 /// keeps a list of all registered aliases
 /// syncable
-#[derive(Clone, Debug, std::cmp::PartialEq, NetworkList, NetworkMap)]
+#[derive(Clone, Default, Debug, std::cmp::PartialEq, NetworkList, NetworkMap)]
 pub struct AliasManager {
     #[network(rename = "Aliases", variant = "VariantMap", network, map)]
     pub aliases: Vec<Alias>,
@@ -23,7 +26,9 @@ pub struct AliasManager {
 
 impl AliasManager {
     pub fn add_alias(&mut self, alias: Alias) {
-        // TODO check if name is equal
+        #[cfg(feature = "server")]
+        sync!("addAlias", [alias.to_network_map()]);
+
         if !self.aliases.contains(&alias) {
             self.aliases.push(alias)
         }
@@ -49,7 +54,7 @@ impl StatefulSyncableServer for AliasManager {
 }
 
 impl Syncable for AliasManager {
-    const CLASS: &'static str = "AliasManager";
+    const CLASS: Class = Class::AliasManager;
 }
 
 /// Alias

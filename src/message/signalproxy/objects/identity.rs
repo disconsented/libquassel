@@ -2,6 +2,7 @@
 use libquassel_derive::sync;
 use libquassel_derive::{NetworkList, NetworkMap, Setters};
 
+use crate::message::Class;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
@@ -12,7 +13,7 @@ use crate::message::Syncable;
 #[allow(unused_imports)]
 use crate::message::signalproxy::translation::NetworkMap;
 
-#[derive(Debug, Clone, PartialEq, NetworkMap, NetworkList, Setters)]
+#[derive(Default, Debug, Clone, PartialEq, NetworkMap, NetworkList, Setters)]
 pub struct Identity {
     #[quassel(name = "identityId")]
     identity_id: i32,
@@ -100,7 +101,7 @@ impl StatefulSyncableClient for Identity {
 impl StatefulSyncableServer for Identity {}
 
 impl Syncable for Identity {
-    const CLASS: &'static str = "Identity";
+    const CLASS: Class = Class::Identity;
 
     fn send_sync(&self, function: &str, params: crate::primitive::VariantList) {
         crate::message::signalproxy::SYNC_PROXY.get().unwrap().sync(
