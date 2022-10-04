@@ -255,7 +255,7 @@ mod tests {
     use crate::message::signalproxy::translation::NetworkList;
     use crate::primitive::{Variant, VariantList};
 
-    // use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_eq;
 
     fn get_network() -> VariantList {
         vec![
@@ -276,39 +276,6 @@ mod tests {
             Variant::bool(false),
         ]
     }
-
-
-
-// [
-//     ByteArray("HighlightRuleList"),
-//     VariantMap({
-//         "isCaseSensitive": VariantList([bool(false)]),
-//         "isEnabled": VariantList([bool(true)]),
-//         "": StringList(["#test"]),
-//         "isRegEx": VariantList([bool(false)]),
-//         "isInverse": VariantList([bool(false)])}),
-//     ByteArray("highlightNick"),
-//     i32(1),
-//     ByteArray("nicksCaseSensitive"),
-//     bool(false)
-// ]
-
-// [
-//     ByteArray("HighlightRuleList"),
-//     VariantMap({
-//         "name": StringList(["testrule"]),
-//         "isEnabled": VariantList([bool(true)]),
-//         "sender": StringList(["testuser"]),
-//         "isInverse": VariantList([bool(false)]),
-//         "isCaseSensitive": VariantList([bool(false)]),
-//         "isRegEx": VariantList([bool(false)]),
-//         "id": VariantList([i32(1)]),
-//         "channel": StringList(["#test"])}),
-//     ByteArray("highlightNick"),
-//     i32(1),
-//     ByteArray("nicksCaseSensitive"),
-//     bool(false)
-// ]
 
     fn get_runtime() -> HighlightRuleManager {
         HighlightRuleManager {
