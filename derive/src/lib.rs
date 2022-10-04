@@ -20,11 +20,17 @@ pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     from::from(input)
 }
 
-#[proc_macro_derive(Setters, attributes(quassel))]
+#[proc_macro_derive(Setters, attributes(setter, quassel))]
 pub fn setters(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     setters::setters(input)
 }
 
+/// Sugar to make sending sync messages nicer
+///
+/// Example:
+/// ```
+/// sync!("requestCreateBufferView", [properties.to_network_map()])
+/// ```
 #[proc_macro]
 pub fn sync(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     sync::sync(input)
@@ -32,14 +38,14 @@ pub fn sync(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 use darling::FromField;
 
-#[derive(Debug, FromField)]
+#[derive(Debug, FromField, Clone)]
 #[darling(attributes(quassel))]
 struct QuasselField {
     ident: Option<syn::Ident>,
     ty: syn::Type,
 
     #[darling(default)]
-    name: String,
+    name: Option<String>,
 }
 
 impl QuasselField {

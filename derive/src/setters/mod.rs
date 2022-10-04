@@ -6,6 +6,8 @@ use syn::{self, parse_macro_input};
 #[derive(Debug, FromField)]
 #[darling(attributes(setter))]
 pub struct SetterField {
+    ident: Option<syn::Ident>,
+
     #[darling(default)]
     skip: bool,
 
@@ -45,8 +47,14 @@ pub fn setters(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .zip(quassel_fields)
         .filter(|(setter_field, _)| !setter_field.skip)
         .map(|(setter_field, quassel_field)| {
+            let raw_name = if let Some(name) = &quassel_field.name {
+                name.clone()
+            } else {
+                setter_field.ident.as_ref().unwrap().to_string()
+            };
+
             let name: String = {
-                let mut name = quassel_field.name.chars();
+                let mut name = raw_name.chars();
 
                 format!(
                     "set{}{}",
@@ -63,7 +71,7 @@ pub fn setters(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     .unwrap_or({
                         let mut res = String::new();
 
-                        for c in quassel_field.name.chars().rev() {
+                        for c in raw_name.chars().rev() {
                             if c <= 'Z' && c >= 'A' {
                                 res.push(c.to_ascii_lowercase());
                                 break;
