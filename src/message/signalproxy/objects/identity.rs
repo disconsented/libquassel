@@ -16,44 +16,48 @@ use crate::message::signalproxy::translation::NetworkMap;
 #[derive(Default, Debug, Clone, PartialEq, NetworkMap, NetworkList, Setters)]
 pub struct Identity {
     #[quassel(name = "identityId")]
-    identity_id: i32,
+    pub identity_id: i32,
     #[quassel(name = "identityName")]
-    identity_name: String,
+    pub identity_name: String,
     #[quassel(name = "realName")]
-    real_name: String,
+    pub real_name: String,
     #[quassel(name = "nicks")]
     #[network(type = "StringList")]
-    nicks: Vec<String>,
+    pub nicks: Vec<String>,
+
+    /// Away Nick is not actually used
+    /// in official quassel client
     #[quassel(name = "awayNick")]
-    away_nick: String,
+    pub away_nick: String,
     #[quassel(name = "awayNickEnabled")]
-    away_nick_enabled: bool,
+    pub away_nick_enabled: bool,
+
     #[quassel(name = "awayReason")]
-    away_reason: String,
+    pub away_reason: String,
     #[quassel(name = "awayReasonEnabled")]
-    away_reason_enabled: bool,
+    pub away_reason_enabled: bool,
     #[quassel(name = "autoAwayEnabled")]
-    auto_away_enabled: bool,
+    pub auto_away_enabled: bool,
     #[quassel(name = "autoAwayTime")]
-    auto_away_time: i32,
+    pub auto_away_time: i32,
     #[quassel(name = "autoAwayReason")]
-    auto_away_reason: String,
+    pub auto_away_reason: String,
     #[quassel(name = "autoAwayReasonEnabled")]
-    auto_away_reason_enabled: bool,
+    pub auto_away_reason_enabled: bool,
     #[quassel(name = "detachAwayEnabled")]
-    detach_away_enabled: bool,
+    pub detach_away_enabled: bool,
     #[quassel(name = "detachAwayReason")]
-    detach_away_reason: String,
+    pub detach_away_reason: String,
     #[quassel(name = "detachAwayReasonEnabled")]
-    detach_away_reason_enabled: bool,
+    pub detach_away_reason_enabled: bool,
     #[quassel(name = "ident")]
-    ident: String,
+    pub ident: String,
     #[quassel(name = "kickReason")]
-    kick_reason: String,
+    pub kick_reason: String,
     #[quassel(name = "partReason")]
-    part_reason: String,
+    pub part_reason: String,
     #[quassel(name = "quitReason")]
-    quit_reason: String,
+    pub quit_reason: String,
 }
 
 impl Identity {
