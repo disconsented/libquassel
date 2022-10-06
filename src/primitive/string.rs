@@ -7,8 +7,25 @@ use failure::Error;
 
 use log::trace;
 
-use crate::util;
-use crate::{deserialize::*, serialize::*};
+use crate::{deserialize::*, error::ProtocolError, serialize::*, util};
+
+impl Deserialize for char {
+    fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
+        let (slen, qchar): (usize, u16) = u16::parse(&b[0..2])?;
+        let qchar = char::from_u32(qchar as u32).ok_or(ProtocolError::CharError)?;
+
+        return Ok((slen, qchar));
+    }
+}
+
+impl Serialize for char {
+    fn serialize(&self) -> Result<Vec<u8>, Error> {
+        let mut b = [0, 0];
+        self.encode_utf16(&mut b);
+
+        return Ok(b[0].to_be_bytes().to_vec());
+    }
+}
 
 /// We Shadow the String type here as we can only use impl on types in our own scope.
 ///

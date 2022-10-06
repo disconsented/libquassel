@@ -40,6 +40,7 @@ pub enum Variant {
     #[from(ignore)]
     ByteArray(String),
     StringList(StringList),
+    char(char),
     bool(bool),
     u64(u64),
     u32(u32),
@@ -204,6 +205,11 @@ impl Serialize for Variant {
                 res.extend(unknown.to_be_bytes().iter());
                 res.extend(v.serialize()?.iter());
             }
+            Variant::char(v) => {
+                res.extend(primitive::QCHAR.to_be_bytes().iter());
+                res.extend(unknown.to_be_bytes().iter());
+                res.extend(v.serialize()?.iter());
+            }
             Variant::String(v) => {
                 res.extend(primitive::QSTRING.to_be_bytes().iter());
                 res.extend(unknown.to_be_bytes().iter());
@@ -304,6 +310,7 @@ impl Serialize for Variant {
 
 impl Deserialize for Variant {
     fn parse(b: &[u8]) -> Result<(usize, Self), Error> {
+        trace!("trying to parse variant with bytes: {:?}", b);
         let (_, qtype) = i32::parse(&b[0..4])?;
         let qtype = qtype as u32;
 
@@ -321,6 +328,11 @@ impl Deserialize for Variant {
                 trace!(target: "primitive::Variant", "Parsing Variant: VariantList");
                 let (vlen, value) = VariantList::parse(&b[len..])?;
                 return Ok((len + vlen, Variant::VariantList(value)));
+            }
+            primitive::QCHAR => {
+                trace!(target: "primitive::Variant", "Parsing Variant: Char");
+                let (vlen, value) = char::parse(&b[len..])?;
+                return Ok((len + vlen, Variant::char(value)));
             }
             primitive::QSTRING => {
                 trace!(target: "primitive::Variant", "Parsing Variant: String");
@@ -652,6 +664,16 @@ mod tests {
 
         assert_eq!(len, 23);
         assert_eq!(res, test_buffer_info);
+    }
+
+    #[test]
+    fn char_serialize() {
+        assert_eq!(Variant::char('z').serialize().unwrap(), [0, 0, 0, 7, 0, 0, 122]);
+    }
+
+    #[test]
+    fn char_deserialize() {
+        assert_eq!((7, Variant::char('z')), Variant::parse(&[0, 0, 0, 7, 0, 0, 122]).unwrap());
     }
 
     #[test]

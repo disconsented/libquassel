@@ -14,6 +14,8 @@ pub enum ProtocolError {
     TryFromIntError(std::num::TryFromIntError),
     #[fail(display = "utf8 error")]
     Utf8Error(std::string::FromUtf8Error),
+    #[fail(display = "failed to parse char as utf16")]
+    CharError,
  }
 
 // impl std::error::Error for ErrorKind {}
