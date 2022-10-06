@@ -9,7 +9,7 @@ use libquassel_derive::{sync, NetworkList, NetworkMap};
 pub struct IgnoreListManager {
     #[quassel(name = "IgnoreList")]
     #[network(variant = "VariantMap", network, map)]
-    ignore_list: Vec<IgnoreListItem>,
+    pub ignore_list: Vec<IgnoreListItem>,
 }
 
 impl IgnoreListManager {
@@ -181,27 +181,27 @@ impl Syncable for IgnoreListManager {
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct IgnoreListItem {
-    #[network(rename = "ignoreType", network, type = "u8")]
-    ignore_type: IgnoreType,
-    #[network(rename = "ignoreRule")]
-    ignore_rule: String,
+    #[network(rename = "ignoreType", network, type = "i32")]
+    pub ignore_type: IgnoreType,
+    #[network(rename = "ignoreRule", variant = "StringList")]
+    pub ignore_rule: String,
     #[network(rename = "isRegEx")]
-    is_regex: bool,
-    #[network(rename = "strictness", network, type = "u8")]
-    strictness: StrictnessType,
-    #[network(rename = "scope", network, type = "u8")]
-    scope: ScopeType,
-    #[network(rename = "scopeRule")]
-    scope_rule: String,
+    pub is_regex: bool,
+    #[network(rename = "strictness", network, type = "i32")]
+    pub strictness: StrictnessType,
+    #[network(rename = "scope", network, type = "i32")]
+    pub scope: ScopeType,
+    #[network(rename = "scopeRule", variant = "StringList")]
+    pub scope_rule: String,
     #[network(rename = "isActive")]
-    is_active: bool,
+    pub is_active: bool,
 }
 
 /////////////////////////////////////
 
 //////////////////////////////////////
 
-#[repr(u8)]
+#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IgnoreType {
     SenderIgnore = 0x00,
@@ -209,10 +209,10 @@ pub enum IgnoreType {
     CtcpIgnore = 0x02,
 }
 
-impl TryFrom<u8> for IgnoreType {
+impl TryFrom<i32> for IgnoreType {
     type Error = &'static str;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(IgnoreType::SenderIgnore),
             0x01 => Ok(IgnoreType::MessageIgnore),
@@ -223,10 +223,10 @@ impl TryFrom<u8> for IgnoreType {
 }
 
 impl crate::message::signalproxy::Network for IgnoreType {
-    type Item = u8;
+    type Item = i32;
 
     fn to_network(&self) -> Self::Item {
-        *self as u8
+        *self as i32
     }
 
     fn from_network(input: &mut Self::Item) -> Self {
@@ -234,7 +234,7 @@ impl crate::message::signalproxy::Network for IgnoreType {
     }
 }
 
-#[repr(u8)]
+#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StrictnessType {
     UnmatchedStrictness = 0x00,
@@ -242,10 +242,10 @@ pub enum StrictnessType {
     HardStrictness = 0x02,
 }
 
-impl TryFrom<u8> for StrictnessType {
+impl TryFrom<i32> for StrictnessType {
     type Error = &'static str;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(StrictnessType::UnmatchedStrictness),
             0x01 => Ok(StrictnessType::SoftStrictness),
@@ -256,10 +256,10 @@ impl TryFrom<u8> for StrictnessType {
 }
 
 impl crate::message::signalproxy::Network for StrictnessType {
-    type Item = u8;
+    type Item = i32;
 
     fn to_network(&self) -> Self::Item {
-        *self as u8
+        *self as i32
     }
 
     fn from_network(input: &mut Self::Item) -> Self {
@@ -267,7 +267,7 @@ impl crate::message::signalproxy::Network for StrictnessType {
     }
 }
 
-#[repr(u8)]
+#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ScopeType {
     GlobalScope = 0x00,
@@ -275,10 +275,10 @@ pub enum ScopeType {
     ChannelScope = 0x02,
 }
 
-impl TryFrom<u8> for ScopeType {
+impl TryFrom<i32> for ScopeType {
     type Error = &'static str;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(ScopeType::GlobalScope),
             0x01 => Ok(ScopeType::NetworkScope),
@@ -289,10 +289,10 @@ impl TryFrom<u8> for ScopeType {
 }
 
 impl crate::message::signalproxy::Network for ScopeType {
-    type Item = u8;
+    type Item = i32;
 
     fn to_network(&self) -> Self::Item {
-        *self as u8
+        *self as i32
     }
 
     fn from_network(input: &mut Self::Item) -> Self {
