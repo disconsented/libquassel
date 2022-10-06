@@ -17,11 +17,11 @@ use crate::message::Syncable;
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct HighlightRuleManager {
     #[network(rename = "HighlightRuleList", variant = "VariantMap", network, map)]
-    highlight_rule_list: Vec<HighlightRule>,
+    pub highlight_rule_list: Vec<HighlightRule>,
     #[network(rename = "highlightNick", variant = "i32", network)]
-    highlight_nick: HighlightNickType,
+    pub highlight_nick: HighlightNickType,
     #[network(rename = "nicksCaseSensitive")]
-    nicks_case_sensitive: bool,
+    pub nicks_case_sensitive: bool,
 }
 
 impl HighlightRuleManager {
@@ -212,21 +212,21 @@ impl Syncable for HighlightRuleManager {
 #[derive(Debug, Clone, PartialEq, NetworkMap)]
 #[network(repr = "maplist")]
 pub struct HighlightRule {
-    id: i32,
+    pub id: i32,
     #[network(variant = "StringList")]
-    name: String,
+    pub name: String,
     #[quassel(name = "isRegEx")]
-    is_regex: bool,
+    pub is_regex: bool,
     #[quassel(name = "isCaseSensitive")]
-    is_case_sensitive: bool,
+    pub is_case_sensitive: bool,
     #[quassel(name = "isEnabled")]
-    is_enabled: bool,
+    pub is_enabled: bool,
     #[quassel(name = "isInverse")]
-    is_inverse: bool,
+    pub is_inverse: bool,
     #[network(variant = "StringList")]
-    sender: String,
+    pub sender: String,
     #[network(variant = "StringList")]
-    channel: String,
+    pub channel: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
