@@ -1,30 +1,210 @@
 use std::collections::HashMap;
 
-use crate::message::NetworkMap;
+#[cfg(feature = "server")]
+use libquassel_derive::sync;
+use libquassel_derive::Setters;
+use log::{error, warn};
+
+use crate::message::{NetworkMap, Syncable, Class};
 use crate::primitive::{StringList, Variant, VariantList, VariantMap};
 
+use super::ChannelModeType;
+
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Setters)]
 pub struct IrcChannel {
+    /// Modes that add or remove items from a list, like commonly +b for the banlist.
+    ///
+    /// Always require a parameter from server to client.
+    /// Clients can request the whole list by leaving the parameter empty
+    #[setter(skip)]
     pub channel_modes_a: HashMap<char, StringList>,
+
+    /// Modes that take a parameter as setting and require it when setting or removing the mode.
+    #[setter(skip)]
     pub channel_modes_b: HashMap<char, String>,
+
+    /// Modes that take a parameter as setting, but only require it when setting the mode.
+    #[setter(skip)]
     pub channel_modes_c: HashMap<char, String>,
+
+    /// Modes without a parameter.
+    #[setter(skip)]
     pub channel_modes_d: String,
+
     // pub channel_modes: HashMap<char, ChannelMode>,
+    #[setter(skip)]
     pub user_modes: HashMap<String, String>,
+    #[setter(skip)]
     pub name: String,
+
     pub topic: String,
     pub password: String,
     pub encrypted: bool,
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum ChannelMode {
-//     A(char, StringList),
-//     B(char, String),
-//     C(char, String),
-//     D(char),
-// }
+// TODO keep user modes sorted
+impl IrcChannel {
+    pub fn add_channel_mode(&mut self, mode_type: ChannelModeType, mode: char, value: String) {
+        match mode_type {
+            ChannelModeType::NotAChanmode => (),
+            ChannelModeType::AChanmode => {
+                self.channel_modes_a.insert(mode, vec![value]);
+            },
+            ChannelModeType::BChanmode => {
+                self.channel_modes_b.insert(mode, value);
+            },
+            ChannelModeType::CChanmode => {
+                self.channel_modes_c.insert(mode, value);
+            },
+            ChannelModeType::DChanmode => {
+                if ! self.channel_modes_d.contains(mode) {
+                    self.channel_modes_d.push(mode);
+                };
+            },
+        };
+    }
+    pub fn remove_channel_mode(&mut self, mode_type: ChannelModeType, mode: char, value: String) {
+        match mode_type {
+            ChannelModeType::NotAChanmode => (),
+            ChannelModeType::AChanmode => {
+                self.channel_modes_a.remove(&mode);
+            },
+            ChannelModeType::BChanmode => {
+                self.channel_modes_b.remove(&mode);
+            },
+            ChannelModeType::CChanmode => {
+                self.channel_modes_c.remove(&mode);
+            },
+            ChannelModeType::DChanmode => {
+                if self.channel_modes_d.contains(mode) {
+                    self.channel_modes_d = self.channel_modes_d.chars().filter(|c| *c != mode).collect();
+                };
+            },
+        }
+    }
+
+    // TODO add user mode validation
+    /// Add one or more mode flags to a user
+    pub fn add_user_mode(&mut self, nick: String, mode: String) {
+        if let Some(user_modes) = self.user_modes.get_mut(&nick) {
+            mode.chars().for_each(|c| {
+                if !user_modes.contains(c) {
+                    user_modes.push(c);
+                }
+            });
+        } else {
+            self.user_modes.insert(nick.clone(), mode.clone());
+        };
+
+        // We need to iterate over all the chars and send a sync for each one
+        // to stay compatible with quassels current behaviour
+        // TODO this might actually be dumb can IRC even into mutiple modes at once?
+        #[cfg(feature = "server")]
+        if let Some(user_modes) = self.user_modes.get(&nick) {
+            mode.chars().for_each(|c| {
+                if !user_modes.contains(c) {
+                    sync!("addUserMode", [nick.clone(), c.to_string()]);
+                }
+            });
+        };
+    }
+
+    /// Remove one or more mode flags from a user
+    pub fn remove_user_mode(&mut self, nick: String, mode: String) {
+        if let Some(user_modes) = self.user_modes.get_mut(&nick) {
+            mode.chars().for_each(|c| {
+                *user_modes = user_modes.replace(c, "");
+            });
+        }
+
+        #[cfg(feature = "server")]
+        sync!("removeUserMode", [nick, mode]);
+    }
+
+    pub fn join_irc_users(&mut self, nicks: StringList, modes: StringList) {
+        if nicks.len() != modes.len() {
+            error!("number of nicks does not match number of modes");
+        }
+
+        #[cfg(feature = "server")]
+        sync!("joinIrcUsers", [nicks.clone(), modes.clone()]);
+
+        nicks
+            .into_iter()
+            .zip(modes)
+            .for_each(|(nick, mode)| self.add_user_mode(nick, mode));
+    }
+
+    pub fn part(&mut self, nick: String) {
+        match self.user_modes.remove(&nick) {
+            Some(_) => (),
+            None => warn!("tried to remove a user that is not joined to the channel"),
+        }
+
+        if self.user_modes.len() == 0
+        /* nick.is_me() */
+        {
+            // TODO Clean up channel and delete
+        }
+    }
+
+    pub fn set_user_modes(&mut self, nick: String, modes: String) {
+        #[cfg(feature = "server")]
+        sync!("setUserModes", [nick.clone(), modes.clone()]);
+
+        *self.user_modes.entry(nick).or_default() = modes;
+    }
+}
+
+#[cfg(feature = "client")]
+impl crate::message::StatefulSyncableClient for IrcChannel {
+    fn sync_custom(&mut self, mut msg: crate::message::SyncMessage)
+    where
+        Self: Sized,
+    {
+        match msg.slot_name.as_str() {
+            // "addChannelMode" => {
+            //     let mode: String = get_param!(msg);
+            //     self.add_channel_mode(mode.chars().next().unwrap(), get_param!(msg));
+            // }
+            // "removeChannelMode" => {
+            //     let mode: String = get_param!(msg);
+            //     self.remove_channel_mode(mode.chars().next().unwrap(), get_param!(msg));
+            // }
+            "addUserMode" => self.add_user_mode(get_param!(msg), get_param!(msg)),
+            "removeUserMode" => self.remove_user_mode(get_param!(msg), get_param!(msg)),
+            "joinIrcUsers" => self.join_irc_users(get_param!(msg), get_param!(msg)),
+            "part" => self.part(get_param!(msg)),
+            "setEncrypted" => self.set_encrypted(get_param!(msg)),
+            "setPassword" => self.set_password(get_param!(msg)),
+            "setTopic" => self.set_topic(get_param!(msg)),
+            "setUserModes" => self.set_user_modes(get_param!(msg), get_param!(msg)),
+            _ => (),
+        }
+    }
+
+    /// Not Implemented for this type
+    fn request_update(&mut self)
+    where
+        Self: Sized,
+    {
+    }
+}
+
+#[cfg(feature = "server")]
+impl crate::message::StatefulSyncableServer for IrcChannel {
+    /// Not Implemented for this type
+    fn request_update(&mut self, _param: <IrcChannel as NetworkMap>::Item)
+    where
+        Self: Sized,
+    {
+    }
+}
+
+impl Syncable for IrcChannel {
+    const CLASS: Class = Class::IrcChannel;
+}
 
 impl NetworkMap for Vec<IrcChannel> {
     type Item = VariantMap;
@@ -340,5 +520,22 @@ mod tests {
             IrcChannel::from_network_map(&mut get_network()),
             get_runtime()
         )
+    }
+
+    #[test]
+    fn add_user_mode() {
+        let mut base = get_runtime();
+        let mut res = get_runtime();
+        res.user_modes = map! { s!("audron") => s!("oh"), s!("audron_") => s!("") };
+
+        base.add_user_mode(s!("audron"), s!("h"));
+        assert_eq!(res, base);
+        base.add_user_mode(s!("audron"), s!("o"));
+        assert_eq!(res, base);
+
+        res.user_modes =
+            map! { s!("audron") => s!("oh"), s!("audron_") => s!(""), s!("test") => s!("h") };
+        base.add_user_mode(s!("test"), s!("h"));
+        assert_eq!(res, base);
     }
 }

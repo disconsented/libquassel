@@ -45,7 +45,56 @@ pub trait SessionManager {
             Class::Network => (),
             Class::NetworkInfo => (),
             Class::NetworkConfig => (),
-            Class::IrcChannel => (),
+            Class::IrcChannel => {
+                let mut object_name = msg.object_name.split('/');
+                let network_id: i32 = object_name.next().unwrap().parse().unwrap();
+                let channel = object_name.next().unwrap();
+
+                debug!("Syncing IrcChannel {} in Network {:?}", channel, network_id);
+
+                if let Some(network) = self.network(network_id) {
+                    if network.irc_channels.get_mut(channel).is_none() {
+                        warn!(
+                            "Could not find IrcChannel {} in Network {:?}",
+                            channel, network_id
+                        )
+                    } else {
+                        match msg.slot_name.as_str() {
+                            "addChannelMode" => {
+                                let mut msg = msg.clone();
+                                let mode: char = get_param!(msg);
+                                let mode_type: ChannelModeType =
+                                    network.get_channel_mode_type(mode);
+
+                                network
+                                    .irc_channels
+                                    .get_mut(channel)
+                                    .unwrap()
+                                    .add_channel_mode(mode_type, mode, get_param!(msg));
+                            }
+                            "removeChannelMode" => {
+                                let mut msg = msg.clone();
+                                let mode: char = get_param!(msg);
+                                let mode_type: ChannelModeType =
+                                    network.get_channel_mode_type(mode);
+
+                                network
+                                    .irc_channels
+                                    .get_mut(channel)
+                                    .unwrap()
+                                    .remove_channel_mode(mode_type, mode, get_param!(msg));
+                            }
+                            _ => network
+                                .irc_channels
+                                .get_mut(channel)
+                                .unwrap()
+                                .sync(msg.clone()),
+                        }
+                    }
+                } else {
+                    warn!("Could not find Network {:?}", network_id)
+                }
+            }
             Class::IrcUser => (),
             Class::Unknown => (),
         }
