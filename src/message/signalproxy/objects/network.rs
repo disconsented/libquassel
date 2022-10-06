@@ -12,20 +12,20 @@ use super::{ircchannel::IrcChannel, ircuser::IrcUser, networkinfo::NetworkInfo};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Network {
-    my_nick: String,
-    latency: i32,
-    current_server: String,
-    is_connected: bool,
-    connection_state: ConnectionState,
-    prefixes: Vec<char>,
-    prefix_modes: Vec<char>,
-    channel_modes: HashMap<ChannelModeType, String>,
-    irc_users: HashMap<String, IrcUser>,
-    irc_channels: HashMap<String, IrcChannel>,
-    supports: HashMap<String, String>,
-    caps: HashMap<String, String>,
-    caps_enabled: Vec<String>,
-    network_info: NetworkInfo,
+    pub my_nick: String,
+    pub latency: i32,
+    pub current_server: String,
+    pub is_connected: bool,
+    pub connection_state: ConnectionState,
+    pub prefixes: Vec<char>,
+    pub prefix_modes: Vec<char>,
+    pub channel_modes: HashMap<ChannelModeType, String>,
+    pub irc_users: HashMap<String, IrcUser>,
+    pub irc_channels: HashMap<String, IrcChannel>,
+    pub supports: HashMap<String, String>,
+    pub caps: HashMap<String, String>,
+    pub caps_enabled: Vec<String>,
+    pub network_info: NetworkInfo,
 }
 
 impl Network {
@@ -424,7 +424,7 @@ mod tests {
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
 #[repr(C)]
-enum ConnectionState {
+pub enum ConnectionState {
     Disconnected = 0x00,
     Connecting = 0x01,
     Initializing = 0x02,
