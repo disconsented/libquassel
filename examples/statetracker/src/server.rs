@@ -188,7 +188,7 @@ impl Server {
                         )
                         .unwrap(),
                     message::Message::RpcCall(msg) => (),
-                    message::Message::InitRequest(msg) => (),
+                    message::Message::InitRequest(msg) => debug!("Got InitRequest: {:#?}", msg),
                     message::Message::InitData(msg) => ctx
                         .submit_command(
                             command::INITDATA,

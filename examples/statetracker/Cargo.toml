@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-libquassel = { path = "../../", features = ["framing", "all-quassel-features", "client", "server"] }
+libquassel = { path = "../../", features = ["framing", "all-quassel-features", "server"], default_features = false }
 
-druid = { git = "https://github.com/linebender/druid", features = ["im"] }
+druid = { git = "https://github.com/linebender/druid", features = ["im"], rev = "0c0851f7be7b2cadd477b9b0caaa91cb081f2e4a" }
 
 anyhow = "*"
 
@@ -31,3 +31,5 @@ webpki-roots = { version = "0.21" }
 futures-util = { version = "0.3", features = ["std"] }
 futures = { version = "0.3" }
 pretty_env_logger = { version = "0.4" }
+
+[workspace]

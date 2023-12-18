@@ -125,6 +125,9 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
             data.alias_manager = Arc::new(alias_manager);
         } else if let Some(initdata) = cmd.get(command::INITDATA) {
             let (_, initdata) = initdata.take().unwrap();
+
+            debug!("got InitData {:#?}", initdata);
+
             match initdata.init_data {
                 objects::Types::AliasManager(alias_manager) => {
                     data.alias_manager = Arc::new(alias_manager)
@@ -154,7 +157,7 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
                     let mut alias_manager = Arc::make_mut(&mut data.alias_manager).clone();
 
                     if direction == Direction::ServerToClient {
-                        StatefulSyncableClient::sync(&mut alias_manager, msg);
+                        // StatefulSyncableClient::sync(&mut alias_manager, msg);
                     } else {
                         StatefulSyncableServer::sync(&mut alias_manager, msg);
                     }
@@ -173,7 +176,7 @@ impl AppDelegate<StateTracker> for StateTrackerDelegate {
                         .unwrap();
 
                     if direction == Direction::ServerToClient {
-                        StatefulSyncableClient::sync(buffer_view_config, msg);
+                        // StatefulSyncableClient::sync(buffer_view_config, msg);
                     } else {
                         StatefulSyncableServer::sync(buffer_view_config, msg);
                     }
