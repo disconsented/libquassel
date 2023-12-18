@@ -2,7 +2,7 @@
   description = "Build a cargo project";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
 
     crane = {
       url = "github:ipetkov/crane";
@@ -61,7 +61,8 @@
 
               # .cargo/config.toml already captured above
               isCargoConfig = parentDir == ".cargo" && base == "config";
-            in type == "directory" || matchesSuffix || isCargoFile
+            in
+            type == "directory" || matchesSuffix || isCargoFile
             || isCargoConfig;
         };
 
@@ -73,10 +74,9 @@
         # artifacts from above.
         libquassel = craneLib.buildPackage {
           inherit cargoArtifacts src;
-
-          # nativeBuildInputs = [ ./README.md ];
         };
-      in {
+      in
+      {
         checks = {
           # Build the crate as part of `nix flake check` for convenience
           inherit libquassel;
@@ -125,7 +125,16 @@
           inputsFrom = builtins.attrValues self.checks;
 
           # Extra inputs can be added here
-          nativeBuildInputs = with pkgs; [ rustToolchain ];
+          nativeBuildInputs = with pkgs; [
+            rustToolchain
+            pkg-config
+            glib
+            cairo
+            pango
+            atk
+            gdk-pixbuf
+            gtk3
+          ];
         };
       });
 }
