@@ -1,4 +1,13 @@
-use crate::message::{objects::{*, Types}, InitData, StatefulSyncableClient, SyncMessage, Syncable, Class};
+use std::collections::HashMap;
+
+use crate::message::StatefulSyncableServer;
+
+use log::{debug, warn};
+
+use crate::message::{
+    objects::{Types, *},
+    Class, InitData, SessionInit, StatefulSyncableClient, SyncMessage, Syncable,
+};
 
 // TODO implement nested types init and sync like BufferViewConfig in BufferViewManager
 
@@ -11,8 +20,9 @@ pub struct Session {
     pub cert_manager: CertManager,
     pub core_info: CoreInfo,
     pub highlight_rule_manager: HighlightRuleManager,
-    pub identity: Identity,
+    pub identities: Vec<Identity>,
     pub ignore_list_manager: IgnoreListManager,
+    pub networks: HashMap<i32, Network>,
 }
 
 /// The Session Trait is the main point of entry and implements the basic logic
@@ -24,8 +34,11 @@ pub trait SessionManager {
     fn cert_manager(&mut self) -> &mut CertManager;
     fn core_info(&mut self) -> &mut CoreInfo;
     fn highlight_rule_manager(&mut self) -> &mut HighlightRuleManager;
-    fn identity(&mut self) -> &mut Identity;
+    fn identities(&mut self) -> &mut Vec<Identity>;
+    fn identity(&mut self, id: usize) -> Option<&mut Identity>;
     fn ignore_list_manager(&mut self) -> &mut IgnoreListManager;
+    fn networks(&mut self) -> &mut HashMap<i32, Network>;
+    fn network(&mut self, id: i32) -> Option<&mut Network>;
 
     fn sync(&mut self, msg: SyncMessage)
     where
@@ -39,10 +52,15 @@ pub trait SessionManager {
             Class::CoreInfo => self.core_info().sync(msg),
             Class::CoreData => (),
             Class::HighlightRuleManager => self.highlight_rule_manager().sync(msg),
-            Class::Identity => self.identity().sync(msg),
+            Class::Identity => (),
             Class::IgnoreListManager => self.ignore_list_manager().sync(msg),
             Class::CertManager => self.cert_manager().sync(msg),
-            Class::Network => (),
+            Class::Network => {
+                let id: i32 = msg.object_name.parse().unwrap();
+                if let Some(network) = self.network(id) {
+                    // network.sync()
+                }
+            }
             Class::NetworkInfo => (),
             Class::NetworkConfig => (),
             Class::IrcChannel => {
@@ -100,9 +118,13 @@ pub trait SessionManager {
         }
     }
 
+    fn session_init(&mut self, data: SessionInit) {
+        *self.identities() = data.identities;
+    }
+
     fn init(&mut self, data: InitData) {
         match data.init_data {
-            Types::AliasManager(data) => {self.alias_manager().init(data)}
+            Types::AliasManager(data) => self.alias_manager().init(data),
             Types::BufferSyncer(data) => self.buffer_syncer().init(data),
             Types::BufferViewConfig(_) => (),
             Types::BufferViewManager(data) => self.buffer_view_manager().init(data),
@@ -110,7 +132,10 @@ pub trait SessionManager {
             Types::HighlightRuleManager(data) => self.highlight_rule_manager().init(data),
             Types::IgnoreListManager(data) => self.ignore_list_manager().init(data),
             Types::CertManager(data) => self.cert_manager().init(data),
-            Types::Network(_) => (),
+            Types::Network(network) => {
+                let id: i32 = data.object_name.parse().unwrap();
+                self.networks().insert(id, network);
+            }
             Types::NetworkInfo(_) => (),
             Types::NetworkConfig(_) => (),
             Types::Unknown(_) => (),
@@ -147,11 +172,23 @@ impl SessionManager for Session {
         &mut self.highlight_rule_manager
     }
 
-    fn identity(&mut self) -> &mut Identity {
-        &mut self.identity
+    fn identities(&mut self) -> &mut Vec<Identity> {
+        &mut self.identities
+    }
+
+    fn identity(&mut self, id: usize) -> Option<&mut Identity> {
+        self.identities.get_mut(id)
     }
 
     fn ignore_list_manager(&mut self) -> &mut IgnoreListManager {
         &mut self.ignore_list_manager
+    }
+
+    fn networks(&mut self) -> &mut HashMap<i32, Network> {
+        &mut self.networks
+    }
+
+    fn network(&mut self, id: i32) -> Option<&mut Network> {
+        self.networks.get_mut(&id)
     }
 }
