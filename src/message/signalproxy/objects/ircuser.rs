@@ -1,39 +1,115 @@
-use crate::primitive::{DateTime, StringList};
+use crate::{
+    message::{Syncable, Class},
+    primitive::{DateTime, StringList},
+};
 
 #[allow(unused_imports)]
 use crate::message::signalproxy::Network;
-use libquassel_derive::NetworkMap;
+
+use itertools::Itertools;
+#[cfg(feature = "server")]
+use libquassel_derive::sync;
+use libquassel_derive::{NetworkMap, Setters};
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, NetworkMap)]
+#[derive(Debug, Clone, PartialEq, NetworkMap, Setters)]
 #[network(repr = "maplist")]
 pub struct IrcUser {
     pub user: String,
     pub host: String,
     pub nick: String,
-    #[network(rename = "realName")]
+    #[quassel(name = "realName")]
     pub real_name: String,
     pub account: String,
     pub away: bool,
-    #[network(rename = "awayMessage")]
+    #[quassel(name = "awayMessage")]
     pub away_message: String,
-    #[network(rename = "idleTime")]
+    #[quassel(name = "idleTime")]
     pub idle_time: DateTime,
-    #[network(rename = "loginTime")]
+    #[quassel(name = "loginTime")]
     pub login_time: DateTime,
     pub server: String,
-    #[network(rename = "ircOperator")]
+    #[quassel(name = "ircOperator")]
     pub irc_operator: String,
-    #[network(rename = "lastAwayMessageTime")]
+    // #[quassel(name = "lastAwayMessage")]
+    // pub last_away_message: i32,
+    #[quassel(name = "lastAwayMessageTime")]
     pub last_away_message_time: DateTime,
-    #[network(rename = "whoisServiceReply")]
+    #[quassel(name = "whoisServiceReply")]
     pub whois_service_reply: String,
-    #[network(rename = "suserHost")]
+    #[quassel(name = "suserHost")]
     pub suser_host: String,
     pub encrypted: bool,
     pub channels: StringList,
-    #[network(rename = "userModes")]
+    #[quassel(name = "userModes")]
     pub user_modes: String,
+}
+
+impl IrcUser {
+    pub fn add_user_modes(&mut self, modes: String) {
+        for mode in modes.chars() {
+            if ! self.user_modes.contains(mode) {
+                self.user_modes.push(mode);
+            }
+        }
+
+        #[cfg(feature = "server")]
+        sync!("addUserModes", [modes]);
+    }
+
+    pub fn remove_user_modes(&mut self, modes: String) {
+        for mode in modes.chars() {
+            if self.user_modes.contains(mode) {
+                self.user_modes = self.user_modes.chars().filter(|c| *c != mode).collect();
+            }
+        }
+
+        #[cfg(feature = "server")]
+        sync!("removeUserModes", [modes]);
+    }
+
+    pub fn update_hostmask(&mut self, mask: String) {
+
+    }
+
+    pub fn join_channel(&mut self, channel: String) {
+        if ! self.channels.contains(&channel) {
+            self.channels.push(channel.clone())
+        }
+
+        #[cfg(feature = "server")]
+        sync!("partChannel", [channel]);
+    }
+
+    pub fn part_channel(&mut self, channel: String) {
+        if let Some((i, _)) = self.channels.iter().find_position(|c| **c == channel) {
+            self.channels.remove(i);
+        }
+
+        #[cfg(feature = "server")]
+        sync!("partChannel", [channel]);
+    }
+
+    pub fn quit(&mut self) {}
+}
+
+#[cfg(feature = "client")]
+impl crate::message::StatefulSyncableClient for IrcUser {}
+
+#[cfg(feature = "server")]
+impl crate::message::StatefulSyncableServer for IrcUser {}
+
+impl Syncable for IrcUser {
+    const CLASS: Class = Class::IrcUser;
+
+    fn send_sync(&self, function: &str, params: crate::primitive::VariantList) {
+        crate::message::signalproxy::SYNC_PROXY.get().unwrap().sync(
+            Self::CLASS,
+            None,
+            function,
+            params,
+        );
+    }
 }
 
 #[cfg(test)]
@@ -57,6 +133,7 @@ mod tests {
             login_time: OffsetDateTime::unix_epoch(),
             server: s!(""),
             irc_operator: s!(""),
+            // last_away_message: 0,
             last_away_message_time: OffsetDateTime::unix_epoch(),
             whois_service_reply: s!(""),
             suser_host: s!(""),
