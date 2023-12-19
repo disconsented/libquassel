@@ -77,7 +77,7 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
                     }
                 } else {
                     quote! {
-                        item.#field_name.clone()
+                        item.#field_name.clone().into()
                     }
                 };
 
@@ -147,7 +147,7 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
 
                 let field_inner = if field.network {
                     quote! {
-                        libquassel::message::Network::from_network(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
+                        libquassel::message::NetworkList::from_network_list(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
                     }
                 } else {
                     quote! {
@@ -202,7 +202,7 @@ pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>, new: bool)
         }
     } else {
         quote! {
-            #type_name::from_network(input)
+            #type_name::from_network_list(input)
         }
     };
 
