@@ -57,7 +57,7 @@ impl From<Variant> for String {
         match input {
             Variant::String(value) => value,
             Variant::ByteArray(value) => value,
-            _ => panic!("unknown variant expected string or bytearray"),
+            _ => panic!("unknown variant expected string or bytearray {:?}", input),
         }
     }
 }
@@ -67,7 +67,7 @@ impl From<&Variant> for String {
         match input {
             Variant::String(value) => value.clone(),
             Variant::ByteArray(value) => value.clone(),
-            _ => panic!("unknown variant expected string or bytearray"),
+            _ => panic!("unknown variant expected string or bytearray {:?}", input),
         }
     }
 }
