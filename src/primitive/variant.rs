@@ -148,41 +148,35 @@ where
     }
 }
 
-impl<T, S> crate::message::NetworkMap for HashMap<T, S>
+impl<S> crate::message::NetworkMap for HashMap<String, S>
 where
-    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
     S: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
 {
-    type Item = super::VariantList;
+    type Item = super::VariantMap;
 
     fn to_network_map(&self) -> Self::Item {
-        let mut res = Vec::with_capacity(self.len() * 2);
+        let mut res = HashMap::with_capacity(self.len());
 
         self.iter().for_each(|(k, v)| {
-            res.push((*k).clone().into());
-            res.push((*v).clone().into());
+            res.insert(k.clone(), (*v).clone().into());
         });
 
         return res;
     }
 
     fn from_network_map(input: &mut Self::Item) -> Self {
-        let mut res = HashMap::with_capacity(input.len() / 2);
-
-        input.iter().tuples().for_each(|(k, v)| {
-            res.insert(
-                match T::try_from(k.clone()) {
-                    Ok(it) => it,
-                    _ => unreachable!(),
-                },
-                match S::try_from(v.clone()) {
-                    Ok(it) => it,
-                    _ => unreachable!(),
-                },
-            );
-        });
-
-        return res;
+        input
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    match S::try_from(v.clone()) {
+                        Ok(it) => it,
+                        _ => unreachable!(),
+                    },
+                )
+            })
+            .collect()
     }
 }
 
@@ -668,12 +662,18 @@ mod tests {
 
     #[test]
     fn char_serialize() {
-        assert_eq!(Variant::char('z').serialize().unwrap(), [0, 0, 0, 7, 0, 0, 122]);
+        assert_eq!(
+            Variant::char('z').serialize().unwrap(),
+            [0, 0, 0, 7, 0, 0, 122]
+        );
     }
 
     #[test]
     fn char_deserialize() {
-        assert_eq!((7, Variant::char('z')), Variant::parse(&[0, 0, 0, 7, 0, 0, 122]).unwrap());
+        assert_eq!(
+            (7, Variant::char('z')),
+            Variant::parse(&[0, 0, 0, 7, 0, 0, 122]).unwrap()
+        );
     }
 
     #[test]
