@@ -126,7 +126,7 @@ pub trait SessionManager {
         match data.init_data {
             Types::AliasManager(data) => self.alias_manager().init(data),
             Types::BufferSyncer(data) => self.buffer_syncer().init(data),
-            Types::BufferViewConfig(_) => (),
+            Types::BufferViewConfig(data) => self.buffer_view_manager().init_buffer_view_config(data),
             Types::BufferViewManager(data) => self.buffer_view_manager().init(data),
             Types::CoreData(data) => self.core_info().set_core_data(data),
             Types::HighlightRuleManager(data) => self.highlight_rule_manager().init(data),

@@ -15,7 +15,7 @@ use super::BufferViewConfig;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BufferViewManager {
-    pub buffer_view_configs: HashMap<i32, BufferViewConfig>,
+    pub buffer_view_configs: HashMap<i32, Option<BufferViewConfig>>,
 }
 
 // TODO initialize the BufferViewConfigs from somewhere
@@ -66,6 +66,14 @@ impl BufferViewManager {
 
         #[cfg(feature = "server")]
         sync!("deleteBufferViewConfig", [id])
+    }
+
+    pub fn init_buffer_view_config(&mut self, config: BufferViewConfig) {
+        if let Some(stored) = self.buffer_view_configs.get_mut(&config.buffer_view_id) {
+            *stored = Some(config);
+        } else {
+            self.buffer_view_configs.insert(config.buffer_view_id, Some(config));
+        }
     }
 }
 
@@ -137,10 +145,22 @@ impl super::NetworkList for BufferViewManager {
         return res;
     }
 
-    fn from_network_list(_input: &mut VariantList) -> Self {
+    fn from_network_list(input: &mut VariantList) -> Self {
+        let mut i = input.iter();
+        i.position(|x| *x == Variant::ByteArray(String::from("BufferViewIds")))
+            .expect(format!("failed to get field BufferViewIds").as_str());
+
+        let ids = match i.next().expect("failed to get next field") {
+            libquassel::primitive::Variant::VariantList(var) => var.clone(),
+            _ => panic!("network::list::from: wrong variant type"),
+        };
+
         // TODO Somehow do the initrequests for all the IDs we get here
         Self {
-            buffer_view_configs: HashMap::new(),
+            buffer_view_configs: ids
+                .into_iter()
+                .map(|id| (i32::try_from(id).unwrap(), Option::None))
+                .collect(),
         }
     }
 }

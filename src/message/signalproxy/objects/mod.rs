@@ -91,7 +91,7 @@ impl Types {
         }
     }
 
-    pub fn from_network(class_name: &str, _object_name: &str, input: &mut VariantList) -> Self {
+    pub fn from_network(class_name: &str, object_name: &str, input: &mut VariantList) -> Self {
         debug!(
             "converting {} from network object: {:#?}",
             class_name, input
@@ -100,7 +100,9 @@ impl Types {
             "AliasManager" => Types::AliasManager(AliasManager::from_network_list(input)),
             "BufferSyncer" => Types::BufferSyncer(BufferSyncer::from_network_list(input)),
             "BufferViewConfig" => {
-                Types::BufferViewConfig(BufferViewConfig::from_network_list(input))
+                let mut config = BufferViewConfig::from_network_list(input);
+                config.buffer_view_id = object_name.parse().unwrap();
+                Types::BufferViewConfig(config)
             }
             "BufferViewManager" => {
                 Types::BufferViewManager(BufferViewManager::from_network_list(input))
