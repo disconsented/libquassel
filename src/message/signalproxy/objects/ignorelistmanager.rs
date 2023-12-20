@@ -4,6 +4,7 @@ use crate::{
 };
 
 use libquassel_derive::{sync, NetworkList, NetworkMap};
+use num_derive::{FromPrimitive, ToPrimitive};
 
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct IgnoreListManager {
@@ -201,8 +202,10 @@ pub struct IgnoreListItem {
 
 //////////////////////////////////////
 
+use num_traits::{FromPrimitive, ToPrimitive};
+
 #[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum IgnoreType {
     SenderIgnore = 0x00,
     MessageIgnore = 0x01,
@@ -211,19 +214,19 @@ pub enum IgnoreType {
 
 impl From<IgnoreType> for Variant {
     fn from(value: IgnoreType) -> Self {
-        Variant::i32(value as i32)
+        Variant::i32(value.to_i32().unwrap())
     }
 }
 
 impl From<Variant> for IgnoreType {
     fn from(value: Variant) -> Self {
-        IgnoreType::try_from(value).unwrap()
+        IgnoreType::from_i32(value.try_into().unwrap()).unwrap()
     }
 }
 
 impl From<IgnoreType> for i32 {
     fn from(value: IgnoreType) -> Self {
-        value as i32
+        value.to_i32().unwrap()
     }
 }
 
@@ -241,7 +244,7 @@ impl TryFrom<i32> for IgnoreType {
 }
 
 #[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum StrictnessType {
     UnmatchedStrictness = 0x00,
     SoftStrictness = 0x01,
@@ -250,19 +253,19 @@ pub enum StrictnessType {
 
 impl From<StrictnessType> for Variant {
     fn from(value: StrictnessType) -> Self {
-        Variant::i32(value as i32)
+        Variant::i32(value.to_i32().unwrap())
     }
 }
 
 impl From<Variant> for StrictnessType {
     fn from(value: Variant) -> Self {
-        StrictnessType::try_from(value).unwrap()
+        StrictnessType::from_i32(value.try_into().unwrap()).unwrap()
     }
 }
 
 impl From<StrictnessType> for i32 {
     fn from(value: StrictnessType) -> Self {
-        value as i32
+        value.to_i32().unwrap()
     }
 }
 
@@ -280,7 +283,7 @@ impl TryFrom<i32> for StrictnessType {
 }
 
 #[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum ScopeType {
     GlobalScope = 0x00,
     NetworkScope = 0x01,
@@ -289,19 +292,19 @@ pub enum ScopeType {
 
 impl From<ScopeType> for Variant {
     fn from(value: ScopeType) -> Self {
-        Variant::i32(value as i32)
+        Variant::i32(value.to_i32().unwrap())
     }
 }
 
 impl From<Variant> for ScopeType {
     fn from(value: Variant) -> Self {
-        ScopeType::try_from(value).unwrap()
+        ScopeType::from_i32(value.try_into().unwrap()).unwrap()
     }
 }
 
 impl From<ScopeType> for i32 {
     fn from(value: ScopeType) -> Self {
-        value as i32
+        value.to_i32().unwrap()
     }
 }
 
