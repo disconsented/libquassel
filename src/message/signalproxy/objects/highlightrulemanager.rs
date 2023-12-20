@@ -1,11 +1,6 @@
-use libquassel_derive::sync;
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
-
-use libquassel_derive::{NetworkList, NetworkMap};
+use libquassel_derive::{sync, NetworkList, NetworkMap};
 
 use crate::message::Class;
-use crate::message::signalproxy::translation::{Network, NetworkMap};
 
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
@@ -13,12 +8,13 @@ use crate::message::StatefulSyncableClient;
 use crate::message::StatefulSyncableServer;
 
 use crate::message::Syncable;
+use crate::primitive::Variant;
 
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct HighlightRuleManager {
-    #[network(rename = "HighlightRuleList", variant = "VariantMap", network, map)]
+    #[network(rename = "HighlightRuleList", variant = "VariantMap", network = "map")]
     pub highlight_rule_list: Vec<HighlightRule>,
-    #[network(rename = "highlightNick", variant = "i32", network)]
+    #[network(rename = "highlightNick", type = "i32")]
     pub highlight_nick: HighlightNickType,
     #[network(rename = "nicksCaseSensitive")]
     pub nicks_case_sensitive: bool,
@@ -86,7 +82,7 @@ impl HighlightRuleManager {
     }
 
     pub fn request_set_highlight_nick(&self, nick: HighlightNickType) {
-        sync!("requestSetHighlightNick", [nick.to_network()])
+        sync!("requestSetHighlightNick", [nick])
     }
 
     pub fn request_set_nicks_case_sensitive(&self, enabled: bool) {
@@ -168,9 +164,7 @@ impl StatefulSyncableClient for HighlightRuleManager {
                 sender: get_param!(msg),
                 channel: get_param!(msg),
             }),
-            "setHighlightNick" => {
-                self.set_highlight_nick(HighlightNickType::from_network(&mut get_param!(msg)))
-            }
+            "setHighlightNick" => self.set_highlight_nick(get_param!(msg)),
             "setNicksCaseSensitive" => self.set_nicks_case_sensitive(get_param!(msg)),
             _ => (),
         }
@@ -196,9 +190,7 @@ impl StatefulSyncableServer for HighlightRuleManager {
                 sender: get_param!(msg),
                 channel: get_param!(msg),
             }),
-            "requestSetHighlightNick" => {
-                self.set_highlight_nick(HighlightNickType::from_network(&mut get_param!(msg)))
-            }
+            "requestSetHighlightNick" => self.set_highlight_nick(get_param!(msg)),
             "requestSetNicksCaseSensitive" => self.set_nicks_case_sensitive(get_param!(msg)),
             _ => (),
         }
@@ -229,7 +221,7 @@ pub struct HighlightRule {
     pub channel: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub enum HighlightNickType {
     #[default]
     NoNick = 0x00,
@@ -237,15 +229,34 @@ pub enum HighlightNickType {
     AllNicks = 0x02,
 }
 
-impl crate::message::signalproxy::Network for HighlightNickType {
-    type Item = i32;
-
-    fn to_network(&self) -> Self::Item {
-        self.to_i32().unwrap()
+impl From<HighlightNickType> for Variant {
+    fn from(value: HighlightNickType) -> Self {
+        Variant::i32(value as i32)
     }
+}
 
-    fn from_network(input: &mut Self::Item) -> Self {
-        Self::from_i32(*input).unwrap()
+impl From<Variant> for HighlightNickType {
+    fn from(value: Variant) -> Self {
+        HighlightNickType::try_from(value).unwrap()
+    }
+}
+
+impl From<HighlightNickType> for i32 {
+    fn from(value: HighlightNickType) -> Self {
+        value as i32
+    }
+}
+
+impl TryFrom<i32> for HighlightNickType {
+    type Error = &'static str;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0x00 => Ok(HighlightNickType::NoNick),
+            0x01 => Ok(HighlightNickType::CurrentNick),
+            0x02 => Ok(HighlightNickType::AllNicks),
+            _ => Err("no matching HighlightNickType found"),
+        }
     }
 }
 

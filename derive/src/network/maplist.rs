@@ -1,7 +1,7 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-use crate::network::get_field_variant_type;
+use crate::network::{get_field_variant_type, gen_type};
 
 use super::NetworkField;
 
@@ -18,14 +18,16 @@ pub(crate) fn to(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
                 let field_name = field.ident.as_ref().unwrap();
                 let field_type = get_field_variant_type(&field);
 
-                let field_inner = if field.network {
-                    quote! {
-                        self.#field_name.to_network().into()
-                    }
-                } else {
-                    quote! {
+                let field_inner = match field.network {
+                    crate::network::NetworkRepr::List => quote! {
+                        self.#field_name.to_network_list().into()
+                    },
+                    crate::network::NetworkRepr::Map => quote! {
+                        self.#field_name.to_network_map().into()
+                    },
+                    crate::network::NetworkRepr::None => quote! {
                         self.#field_name.clone().into()
-                    }
+                    },
                 };
 
                 if let Some(_) = field.variant {
@@ -63,24 +65,27 @@ pub(crate) fn to_vec(_type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStr
                 };
 
                 let field_name = field.ident.as_ref().unwrap();
-                let field_type = get_field_variant_type(&field);
 
-                let field_inner = if field.network {
-                    if field.map {
-                        quote! {
-                            item.#field_name.to_network_map()
-                        }
-                    } else {
-                        quote! {
-                            item.#field_name.to_network()
-                        }
-                    }
-                } else {
-                    quote! {
-                        item.#field_name.clone().into()
-                    }
+                let field_type = match field.network {
+                    crate::network::NetworkRepr::List => gen_type("VariantList"),
+                    crate::network::NetworkRepr::Map => gen_type("VariantMap"),
+                    crate::network::NetworkRepr::None => get_field_variant_type(&field),
                 };
 
+                let field_inner = match field.network {
+                    crate::network::NetworkRepr::List => quote! {
+                        item.#field_name.to_network_list().into()
+                    },
+                    crate::network::NetworkRepr::Map => quote! {
+                        item.#field_name.to_network_map().into()
+                    },
+                    crate::network::NetworkRepr::None => quote! {
+                        item.#field_name.clone().into()
+                    },
+                };
+
+                // FIXME this section doesn't make any sense to me anymore
+                // why do we select a StringList if we have configured a variant???
                 if let Some(_) = field.variant {
                     lists.push(quote! {
                         let mut #field_name: libquassel::primitive::StringList = Vec::with_capacity(self.len());
@@ -145,14 +150,16 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
 
                 let field_type = get_field_variant_type(&field);
 
-                let field_inner = if field.network {
-                    quote! {
+                let field_inner = match field.network {
+                    super::NetworkRepr::List => quote! {
                         libquassel::message::NetworkList::from_network_list(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
-                    }
-                } else {
-                    quote! {
+                    },
+                    super::NetworkRepr::Map => quote! {
+                        libquassel::message::NetworkMap::from_network_map(&mut std::convert::TryInto::try_into(input.remove(0)).unwrap())
+                    },
+                    super::NetworkRepr::None => quote! {
                         std::convert::TryInto::try_into(input.remove(0)).unwrap()
-                    }
+                    },
                 };
 
                 if let Some(_) = field.variant {
@@ -175,7 +182,7 @@ pub(crate) fn from(fields: &Vec<NetworkField>) -> Vec<TokenStream> {
         .collect()
 }
 
-pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>, new: bool) -> TokenStream {
+pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>) -> TokenStream {
     let field = &fields[0];
 
     let field_rename = match &field.rename {
@@ -196,14 +203,8 @@ pub(crate) fn from_vec(type_name: &Ident, fields: &Vec<NetworkField>, new: bool)
         },
     };
 
-    let inner = if new {
-        quote! {
-            #type_name::from_network_map(input)
-        }
-    } else {
-        quote! {
-            #type_name::from_network_list(input)
-        }
+    let inner = quote! {
+        #type_name::from_network_map(input)
     };
 
     quote! {

@@ -20,17 +20,20 @@ pub struct Network {
 /// List:
 /// Map:
 /// Maplist:
-#[derive(Debug, Clone, Copy, PartialEq, FromMeta)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, FromMeta)]
 pub enum Repr {
     List,
+    #[default]
     Map,
     Maplist,
 }
 
-impl Default for Repr {
-    fn default() -> Self {
-        Repr::Map
-    }
+#[derive(Debug, Default, Clone, Copy, PartialEq, FromMeta)]
+pub enum NetworkRepr {
+    List,
+    Map,
+    #[default]
+    None,
 }
 
 #[derive(Debug, FromField)]
@@ -50,11 +53,7 @@ pub struct NetworkField {
     /// field is a nested network repr so
     /// use to_network and from_network on it
     #[darling(default)]
-    network: bool,
-    /// When network is true, use map
-    /// network representation for this field
-    #[darling(default)]
-    map: bool,
+    network: NetworkRepr,
     /// Skips this field when parsing from network
     /// representation and uses the default value of the type
     #[darling(default)]
@@ -135,13 +134,13 @@ pub fn network_map(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let to_network_map_vec = match network.repr {
         Repr::Maplist => maplist::to_vec(name, &fields),
-        Repr::Map => map::to_vec(name, &fields, true),
+        Repr::Map => map::to_vec(name, &fields),
         _ => unimplemented!(),
     };
 
     let from_network_map_vec = match network.repr {
-        Repr::Maplist => maplist::from_vec(name, &fields, true),
-        Repr::Map => map::from_vec(name, &fields, true),
+        Repr::Maplist => maplist::from_vec(name, &fields),
+        Repr::Map => map::from_vec(name, &fields),
         _ => unimplemented!(),
     };
 
@@ -240,21 +239,4 @@ fn gen_type(typ: &str) -> syn::Type {
             },
         },
     })
-}
-
-fn get_field_type_colon(mut ty: syn::Type) -> syn::Type {
-    match &mut ty {
-        syn::Type::Path(path) => {
-            let first_seg = path.path.segments.first_mut().unwrap();
-            match &mut first_seg.arguments {
-                syn::PathArguments::AngleBracketed(bracket) => {
-                    bracket.colon2_token = Some(syn::parse_str("::").unwrap());
-                }
-                _ => (),
-            }
-        }
-        _ => (),
-    };
-
-    return ty;
 }

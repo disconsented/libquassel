@@ -6,7 +6,7 @@ use crate::{deserialize::*, serialize::*};
 
 use crate::primitive::BufferInfo;
 
-use super::Variant;
+use super::{Variant, VariantList};
 
 /// The Message struct represents a Message as received in IRC
 ///
@@ -222,13 +222,11 @@ bitflags! {
     }
 }
 
-impl<T> crate::message::Network for HashMap<T, MessageType>
+impl<T> crate::message::NetworkList for HashMap<T, MessageType>
 where
     T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
 {
-    type Item = super::VariantList;
-
-    fn to_network(&self) -> Self::Item {
+    fn to_network_list(&self) -> VariantList {
         let mut res = Vec::with_capacity(self.len() * 2);
 
         self.iter().for_each(|(k, v)| {
@@ -239,7 +237,7 @@ where
         return res;
     }
 
-    fn from_network(input: &mut Self::Item) -> Self {
+    fn from_network_list(input: &mut VariantList) -> Self {
         use itertools::Itertools;
 
         let mut res = HashMap::with_capacity(input.len() / 2);

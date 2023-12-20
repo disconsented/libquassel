@@ -86,38 +86,12 @@ impl From<&str> for Variant {
 
 /// Implements the Network trait genericly for everything that
 /// can be a VariantList / Vec<T>
-impl<T> crate::message::Network for Vec<T>
-where
-    T: std::convert::TryFrom<Variant> + Into<Variant> + Clone,
-{
-    type Item = super::VariantList;
-
-    fn to_network(&self) -> Self::Item {
-        self.iter().map(|i| (*i).clone().into()).collect()
-    }
-
-    fn from_network(input: &mut Self::Item) -> Self {
-        input
-            .iter()
-            .map(|i| match T::try_from(i.clone()) {
-                Ok(it) => it,
-                // TODO handle error
-                _ => unreachable!(),
-            })
-            .collect()
-    }
-}
-
-/// Implements the Network trait genericly for everything that
-/// can be a VariantList / Vec<T>
-impl<T, S> crate::message::Network for HashMap<T, S>
+impl<T, S> crate::message::NetworkList for HashMap<T, S>
 where
     T: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
     S: std::convert::TryFrom<Variant> + Into<Variant> + Clone + std::hash::Hash + std::cmp::Eq,
 {
-    type Item = super::VariantList;
-
-    fn to_network(&self) -> Self::Item {
+    fn to_network_list(&self) -> VariantList {
         let mut res = Vec::with_capacity(self.len() * 2);
 
         self.iter().for_each(|(k, v)| {
@@ -128,7 +102,7 @@ where
         return res;
     }
 
-    fn from_network(input: &mut Self::Item) -> Self {
+    fn from_network_list(input: &mut VariantList) -> Self {
         let mut res = HashMap::with_capacity(input.len() / 2);
 
         input.iter().tuples().for_each(|(k, v)| {

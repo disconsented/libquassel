@@ -86,6 +86,7 @@ VariantMap({
 **/
 use crate::primitive::{Variant, VariantList};
 
+#[deprecated(since="0.1.0", note="please use NetworkMap and NetworkList implementations")]
 pub trait Network {
     type Item;
 

@@ -3,9 +3,6 @@ use crate::{
     primitive::{DateTime, StringList},
 };
 
-#[allow(unused_imports)]
-use crate::message::signalproxy::Network;
-
 use itertools::Itertools;
 #[cfg(feature = "server")]
 use libquassel_derive::sync;

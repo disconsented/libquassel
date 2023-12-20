@@ -42,11 +42,11 @@ pub fn insert_bytes(pos: usize, buf: &mut Vec<u8>, input: &mut [u8]) {
 macro_rules! map {
     // map-like
     ($($k:expr => $v:expr),* $(,)?) => {
-        std::iter::Iterator::collect(std::array::IntoIter::new([$(($k, $v),)*]))
+        std::iter::Iterator::collect(std::iter::IntoIterator::into_iter([$(($k, $v),)*]))
     };
     // set-like
     ($($v:expr),* $(,)?) => {
-        std::iter::Iterator::collect(std::array::IntoIter::new([$($v,)*]))
+        std::iter::Iterator::collect(std::iter::IntoIterator::into_iter([$($v,)*]))
     };
 }
 

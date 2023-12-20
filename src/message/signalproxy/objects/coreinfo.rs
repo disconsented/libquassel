@@ -7,7 +7,7 @@ use crate::primitive::{DateTime, StringList};
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 #[network(repr = "map")]
 pub struct CoreInfo {
-    #[network(rename = "coreData", variant = "VariantMap", network)]
+    #[network(rename = "coreData", variant = "VariantMap", network = "map")]
     pub core_data: CoreData,
 }
 
@@ -68,8 +68,7 @@ pub struct CoreData {
     #[network(
         rename = "sessionConnectedClientData",
         variant = "VariantList",
-        network,
-        map
+        network = "map",
     )]
     pub session_connected_client_data: Vec<ConnectedClient>,
 }

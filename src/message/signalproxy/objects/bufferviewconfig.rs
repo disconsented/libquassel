@@ -1,23 +1,25 @@
 use libquassel_derive::sync;
 use libquassel_derive::{NetworkList, NetworkMap};
 
-use crate::message::signalproxy::translation::Network;
-
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableClient;
 #[allow(unused_imports)]
 use crate::message::StatefulSyncableServer;
-use crate::message::{Syncable, Class};
+use crate::message::{Class, Syncable};
 
 use crate::primitive::VariantList;
 
 #[derive(Debug, Default, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferViewConfig {
-    #[network(rename = "BufferList", network, variant = "VariantList")]
+    #[network(rename = "BufferList", network = "map", variant = "VariantList")]
     pub buffers: Vec<i32>,
-    #[network(rename = "RemovedBuffers", network, variant = "VariantList")]
+    #[network(rename = "RemovedBuffers", network = "map", variant = "VariantList")]
     pub removed_buffers: Vec<i32>,
-    #[network(rename = "TemporarilyRemovedBuffers", network, variant = "VariantList")]
+    #[network(
+        rename = "TemporarilyRemovedBuffers",
+        network = "map",
+        variant = "VariantList"
+    )]
     pub temporarily_removed_buffers: Vec<i32>,
 
     #[network(rename = "bufferViewId", default, skip)]

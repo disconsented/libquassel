@@ -3,14 +3,13 @@ use crate::primitive::StringList;
 use libquassel_derive::NetworkList;
 
 use crate::message::objects::network::NetworkServer;
-use crate::message::signalproxy::translation::NetworkMap;
 
 #[derive(Default, Debug, Clone, PartialEq, NetworkList)]
 pub struct NetworkInfo {
     #[network(rename = "networkName")]
     pub network_name: String,
 
-    #[network(rename = "ServerList", variant = "VariantList", network, map)]
+    #[network(rename = "ServerList", variant = "VariantList", network = "map")]
     pub server_list: Vec<NetworkServer>,
     #[network(rename = "perform")]
     pub perform: StringList,

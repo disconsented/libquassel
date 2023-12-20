@@ -1,14 +1,14 @@
-use crate::{message::{
-    signalproxy::translation::{Network, NetworkMap, NetworkList},
-    Syncable, Class,
-}, primitive::Variant};
+use crate::{
+    message::{Class, Syncable},
+    primitive::Variant,
+};
 
 use libquassel_derive::{sync, NetworkList, NetworkMap};
 
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct IgnoreListManager {
     #[quassel(name = "IgnoreList")]
-    #[network(variant = "VariantMap", network, map)]
+    #[network(variant = "VariantMap", network = "map")]
     pub ignore_list: Vec<IgnoreListItem>,
 }
 

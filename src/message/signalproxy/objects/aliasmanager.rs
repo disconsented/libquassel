@@ -10,8 +10,6 @@ use crate::message::StatefulSyncableServer;
 
 use crate::message::Syncable;
 
-use crate::message::signalproxy::translation::NetworkMap;
-
 #[allow(unused_imports)]
 use crate::primitive::VariantMap;
 
@@ -20,7 +18,7 @@ use crate::primitive::VariantMap;
 /// syncable
 #[derive(Clone, Default, Debug, std::cmp::PartialEq, NetworkList, NetworkMap)]
 pub struct AliasManager {
-    #[network(rename = "Aliases", variant = "VariantMap", network, map)]
+    #[network(rename = "Aliases", variant = "VariantMap", network = "map")]
     pub aliases: Vec<Alias>,
 }
 

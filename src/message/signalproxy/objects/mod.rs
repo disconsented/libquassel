@@ -9,6 +9,7 @@ mod highlightrulemanager;
 mod identity;
 mod ignorelistmanager;
 mod ircchannel;
+mod chanmodes;
 mod ircuser;
 mod network;
 mod networkinfo;
@@ -24,6 +25,7 @@ pub use highlightrulemanager::*;
 pub use identity::*;
 pub use ignorelistmanager::*;
 pub use ircchannel::*;
+pub use chanmodes::*;
 pub use ircuser::*;
 pub use network::*;
 pub use networkinfo::*;
@@ -68,6 +70,7 @@ pub enum Types {
     Network(network::Network),
     NetworkInfo(NetworkInfo),
     NetworkConfig(NetworkConfig),
+    // IrcChannel(IrcChannel),
     Unknown(VariantList),
 }
 
@@ -87,6 +90,7 @@ impl Types {
             Types::Network(val) => val.to_network_list(),
             Types::NetworkInfo(val) => val.to_network_list(),
             Types::NetworkConfig(val) => val.to_network_list(),
+            // Types::IrcChannel(val) => todo!(),
             Types::Unknown(val) => val.clone(),
         }
     }
@@ -123,6 +127,7 @@ impl Types {
             "Network" => Types::Network(Network::from_network_list(input)),
             "NetworkInfo" => Types::NetworkInfo(NetworkInfo::from_network_list(input)),
             "NetworkConfig" => Types::NetworkConfig(NetworkConfig::from_network_list(input)),
+            // "IrcChannel" => Types::IrcChannel(IrcChannel::from_network_list(input)),
             _ => Types::Unknown(input.to_owned()),
         }
     }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    message::{signalproxy::translation::Network, Syncable, Class},
+    message::{Syncable, Class},
     primitive::MessageType,
 };
 
@@ -9,13 +9,13 @@ use libquassel_derive::{sync, NetworkList, NetworkMap};
 
 #[derive(Default, Debug, Clone, PartialEq, NetworkList, NetworkMap)]
 pub struct BufferSyncer {
-    #[network(rename = "Activities", network, variant = "VariantList")]
+    #[network(rename = "Activities", network = "list", variant = "VariantList")]
     pub activities: HashMap<i32, MessageType>,
-    #[network(rename = "HighlightCounts", network, variant = "VariantList")]
+    #[network(rename = "HighlightCounts", network = "list", variant = "VariantList")]
     pub highlight_counts: HashMap<i32, i32>,
-    #[network(rename = "LastSeenMsg", network, variant = "VariantList")]
+    #[network(rename = "LastSeenMsg", network = "list", variant = "VariantList")]
     pub last_seen_msg: HashMap<i32, i64>,
-    #[network(rename = "MarkerLines", network, variant = "VariantList")]
+    #[network(rename = "MarkerLines", network = "list", variant = "VariantList")]
     pub marker_line: HashMap<i32, i64>,
 }
 
