@@ -5,4 +5,3 @@ vendor
 **/*.rs.bk
 examples/testserver
 lcov.info
-README.org
