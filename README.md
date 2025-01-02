@@ -1,0 +1,1 @@
+A fork of https://gitlab.com/cocainefarm/libquassel/-/tree/master?ref_type=heads 
